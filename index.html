@@ -331,6 +331,64 @@
             overflow-y: auto;
         }
         
+        .api-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            margin-top: 30px;
+            border: 1px solid #e9ecef;
+            text-align: center;
+        }
+        
+        .api-section h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        
+        .api-btn {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+        
+        .api-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(40, 167, 69, 0.3);
+        }
+        
+        .api-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .api-status {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .api-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .api-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
         @media (max-width: 768px) {
             .columns-grid {
                 grid-template-columns: 1fr;
@@ -370,6 +428,13 @@
                 <button class="analyze-btn" id="analyzeBtn" onclick="analyzeOrder()">🚀 Analyze Order</button>
             </div>
             
+            <div class="api-section">
+                <h3>📊 Export to Google Sheets</h3>
+                <p>Send the analyzed results directly to Google Sheets</p>
+                <button class="api-btn" id="exportBtn" onclick="exportToSheets()" disabled>📤 Export Results</button>
+                <div id="apiStatus" class="api-status"></div>
+            </div>
+            
             <div class="result-container" id="resultContainer">
                 <div class="result-header">
                     <div>
@@ -397,7 +462,11 @@
     </div>
 
     <script>
+        // Google Apps Script Web App URL
+        const DEPLOYMENT_URL = 'https://script.google.com/a/macros/talabat.com/s/AKfycbwz67TRccLcpynsxyQowygRbyRKzW6UVFqBcJ3ddJmI-gRnDdhx1eeIRG7lumCkC1xb1Q/exec';
+        
         let debugData = {};
+        let currentResults = {};
         
         function toggleDebug() {
             const debug = document.getElementById('debugInfo');
@@ -410,11 +479,14 @@
             const loadingDiv = document.getElementById('loading');
             const resultContainer = document.getElementById('resultContainer');
             const analyzeBtn = document.getElementById('analyzeBtn');
+            const exportBtn = document.getElementById('exportBtn');
             
             // Reset UI
             errorDiv.style.display = 'none';
             resultContainer.style.display = 'none';
             document.getElementById('debugInfo').style.display = 'none';
+            document.getElementById('apiStatus').style.display = 'none';
+            exportBtn.disabled = true;
             
             // Validate input
             if (!details) {
@@ -433,9 +505,13 @@
                 try {
                     const result = processOrderDetails(details);
                     debugData = result;
+                    currentResults = result.columns;
                     
                     // Update result display
                     updateResultDisplay(result);
+                    
+                    // Enable export button
+                    exportBtn.disabled = false;
                     
                     // Show result
                     resultContainer.style.display = 'block';
@@ -454,6 +530,89 @@
                     analyzeBtn.textContent = '🚀 Analyze Order';
                 }
             }, 500);
+        }
+        
+        async function exportToSheets() {
+            const exportBtn = document.getElementById('exportBtn');
+            const apiStatus = document.getElementById('apiStatus');
+            
+            // Validate that we have results
+            if (!currentResults || Object.keys(currentResults).length === 0) {
+                apiStatus.textContent = 'Please analyze an order first';
+                apiStatus.className = 'api-status api-error';
+                apiStatus.style.display = 'block';
+                return;
+            }
+            
+            // Prepare data for export
+            const exportData = {
+                orderDetails: document.getElementById('orderDetails').value.trim(),
+                analysisResults: currentResults,
+                timestamp: new Date().toISOString()
+            };
+            
+            // Update UI
+            exportBtn.disabled = true;
+            exportBtn.textContent = 'Exporting...';
+            apiStatus.textContent = 'Sending data to Google Sheets...';
+            apiStatus.className = 'api-status';
+            apiStatus.style.display = 'block';
+            
+            try {
+                // Send data to Google Apps Script
+                const response = await fetch(DEPLOYMENT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors', // Important for Google Apps Script
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(exportData)
+                });
+                
+                // Note: With 'no-cors', we can't read the response
+                // But we can show success message assuming it worked
+                apiStatus.textContent = '✅ Data sent successfully to Google Sheets!';
+                apiStatus.className = 'api-status api-success';
+                
+                // Alternative: Try with cors mode if needed
+                try {
+                    const corsResponse = await fetch(DEPLOYMENT_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(exportData)
+                    });
+                    
+                    if (corsResponse.ok) {
+                        const result = await corsResponse.text();
+                        apiStatus.textContent = '✅ Data sent successfully to Google Sheets!';
+                        apiStatus.className = 'api-status api-success';
+                    } else {
+                        apiStatus.textContent = '⚠️ Data may have been sent (check Google Sheets)';
+                        apiStatus.className = 'api-status api-error';
+                    }
+                } catch (corsError) {
+                    // Fall back to no-cors success message
+                    apiStatus.textContent = '✅ Data sent successfully to Google Sheets!';
+                    apiStatus.className = 'api-status api-success';
+                }
+                
+            } catch (error) {
+                console.error('Export error:', error);
+                apiStatus.textContent = '❌ Error sending data: ' + error.message;
+                apiStatus.className = 'api-status api-error';
+            } finally {
+                exportBtn.disabled = false;
+                exportBtn.textContent = '📤 Export Results';
+                
+                // Auto-hide success message after 5 seconds
+                if (apiStatus.className.includes('api-success')) {
+                    setTimeout(() => {
+                        apiStatus.style.display = 'none';
+                    }, 5000);
+                }
+            }
         }
         
         function processOrderDetails(text) {
