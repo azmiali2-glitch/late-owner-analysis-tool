@@ -350,8 +350,7 @@
     <div class="container">
         <div class="header">
             <h1>📊 Late Owner Analysis Tool</h1>
-            <p>Created by talabat SSC Analytics Team</p>
-            <p style="margin-top: 10px; font-size: 0.9em; opacity: 0.8;">Connected to Google Apps Script API</p>
+            <p>Created by talabat SSC Analytics Team.​ </p>
         </div>
         
         <div class="content">
@@ -398,9 +397,6 @@
     </div>
 
     <script>
-        // Google Apps Script deployment URL
-        const DEPLOYMENT_URL = 'https://script.google.com/a/macros/talabat.com/s/AKfycbzUBMirdPN0UUQU1Lm8pB14QGNjn4NORepBkc4HwP1LfMKNXG0iXGoPqkhbmcGhYX4DhQ/exec';
-        
         let debugData = {};
         
         function toggleDebug() {
@@ -408,7 +404,7 @@
             debug.style.display = debug.style.display === 'block' ? 'none' : 'block';
         }
         
-        async function analyzeOrder() {
+        function analyzeOrder() {
             const details = document.getElementById('orderDetails').value.trim();
             const errorDiv = document.getElementById('errorMessage');
             const loadingDiv = document.getElementById('loading');
@@ -432,72 +428,32 @@
             analyzeBtn.disabled = true;
             analyzeBtn.textContent = 'Processing...';
             
-            try {
-                // Call Google Apps Script API
-                const response = await fetch(DEPLOYMENT_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        orderDetails: details
-                    })
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const result = await response.json();
-                
-                if (result.error) {
-                    throw new Error(result.error);
-                }
-                
-                // Update result display
-                updateResultDisplay(result);
-                
-                // Show result
-                resultContainer.style.display = 'block';
-                
-                // Update debug info
-                updateDebugInfo(result);
-                
-            } catch (error) {
-                console.error('API Error:', error);
-                
-                // Fallback to local processing if API fails
-                console.log('API failed, falling back to local processing...');
+            // Process the details
+            setTimeout(() => {
                 try {
-                    const localResult = processOrderDetails(details);
-                    debugData = localResult;
+                    const result = processOrderDetails(details);
+                    debugData = result;
                     
                     // Update result display
-                    updateResultDisplay(localResult);
+                    updateResultDisplay(result);
                     
                     // Show result
                     resultContainer.style.display = 'block';
                     
                     // Update debug info
-                    updateDebugInfo(localResult);
+                    updateDebugInfo(result);
                     
-                    // Show warning about fallback
-                    errorDiv.textContent = '⚠️ Using local processing (API connection failed)';
+                } catch (error) {
+                    errorDiv.textContent = 'Error processing details: ' + error.message;
                     errorDiv.style.display = 'block';
-                    errorDiv.style.background = '#fff3cd';
-                    errorDiv.style.color = '#856404';
-                    errorDiv.style.borderColor = '#ffeaa7';
-                    
-                } catch (fallbackError) {
-                    errorDiv.textContent = 'Error processing details: ' + error.message + ' (Fallback also failed)';
-                    errorDiv.style.display = 'block';
+                    console.error('Processing error:', error);
+                } finally {
+                    // Hide loading
+                    loadingDiv.style.display = 'none';
+                    analyzeBtn.disabled = false;
+                    analyzeBtn.textContent = '🚀 Analyze Order';
                 }
-            } finally {
-                // Hide loading
-                loadingDiv.style.display = 'none';
-                analyzeBtn.disabled = false;
-                analyzeBtn.textContent = '🚀 Analyze Order';
-            }
+            }, 500);
         }
         
         function processOrderDetails(text) {
@@ -973,6 +929,7 @@
             console.log('=== Searching for L: Est. Dropoff ===');
             
             // Method 1: Use your exact Google Sheets formula pattern
+            // Pattern: "Picked Up" followed by non-digits, then capture a time
             const estDropoffRegex = /Picked\s+Up\s+[^0-9\n]*(\d{1,2}:\d{2}\s*[APM]{2})/i;
             const estDropoffMatch = text.match(estDropoffRegex);
             
@@ -980,8 +937,10 @@
                 console.log('Method 1 - Google Sheets pattern matched:', estDropoffMatch[1]);
                 const estDropoffTime = parseTime(estDropoffMatch[1]);
                 if (estDropoffTime) {
+                    // Apply the same logic as your Google Sheets formula
                     // IF(time < E2, time + D2 + 1, time + D2)
                     if (estDropoffTime < baseTime) {
+                        // If extracted time is before ordered time, add 1 day
                         const nextDay = new Date(baseDate);
                         nextDay.setDate(nextDay.getDate() + 1);
                         result.timestamps.L = combineDateTime(nextDay, estDropoffTime, baseTime);
@@ -996,11 +955,13 @@
             // Method 2: Look for specific timeline pattern from your data
             if (!result.columns.L) {
                 console.log('Method 1 failed, trying Method 2...');
+                // Pattern: time, Picked Up, dashes, then time (10:34 PM Picked Up - - - 10:51 PM)
                 const timelinePattern = /(\d{1,2}:\d{2}\s*[AP]M)[^0-9]*Picked\s+Up[^0-9\-]*(-[^0-9\-]*){3}[^0-9]*(\d{1,2}:\d{2}\s*[AP]M)/i;
                 const timelineMatch = text.match(timelinePattern);
                 
                 if (timelineMatch) {
                     console.log('Method 2 - Timeline pattern matched. First time:', timelineMatch[1], 'Second time:', timelineMatch[3]);
+                    // The second time is likely Est.dropoff
                     const estDropoffTime = parseTime(timelineMatch[3]);
                     if (estDropoffTime) {
                         result.timestamps.L = combineDateTime(baseDate, estDropoffTime, baseTime);
@@ -1013,15 +974,19 @@
             // Method 3: Look for Picked Up row with multiple times
             if (!result.columns.L) {
                 console.log('Method 2 failed, trying Method 3...');
+                // Find all occurrences of time near "Picked Up"
                 const lines = text.split('\n');
                 for (let i = 0; i < lines.length; i++) {
                     const line = lines[i].trim();
                     if (line.includes('Picked Up')) {
                         console.log('Found Picked Up line:', line);
+                        // Extract all times from this line
                         const times = [...line.matchAll(/(\d{1,2}:\d{2}\s*[AP]M)/gi)];
                         console.log('Times in line:', times.map(t => t[0]));
                         
+                        // Usually the last time or second time is Est.dropoff
                         if (times.length >= 2) {
+                            // Try the last time first
                             const lastTime = times[times.length - 1][0];
                             console.log('Trying last time:', lastTime);
                             const estDropoffTime = parseTime(lastTime);
@@ -1054,11 +1019,13 @@
             // Method 5: Search in the timeline table section
             if (!result.columns.L) {
                 console.log('Method 4 failed, trying Method 5...');
+                // Find timeline section
                 const timelineStart = text.search(/Time\s+Event/i);
                 if (timelineStart !== -1) {
                     const timelineEnd = text.indexOf('\n\n', timelineStart);
                     const timelineText = text.substring(timelineStart, timelineEnd !== -1 ? timelineEnd : text.length);
                     
+                    // Look for pattern with multiple times in Picked Up row
                     const pickedUpRowMatch = timelineText.match(/Picked\s+Up[^\n]*(\d{1,2}:\d{2}\s*[AP]M)[^\n]*$/im);
                     if (pickedUpRowMatch) {
                         console.log('Method 5 - Picked Up row in timeline matched time:', pickedUpRowMatch[1]);
@@ -1126,6 +1093,7 @@
             // Method 2: If first method fails, try a more specific pattern
             if (!pdtTime) {
                 console.log('PDT regex 1 failed, trying method 2...');
+                // Look for PDT, then optional whitespace/newlines, then date, then time
                 const pdtRegex2 = /PDT\s*\n?\s*[^\n]*?\s*(\d{1,2}:\d{2}\s*[ap]m)/i;
                 const pdtMatch2 = text.match(pdtRegex2);
                 if (pdtMatch2) {
@@ -1259,7 +1227,7 @@
             console.log('O: food_is_ready_at =', result.columns.O);
             
             // P: cancellation_time - UTC-BASED WITH COUNTRY OFFSETS
-            const nowUTC = new Date();
+            const nowUTC = new Date(); // This is browser local, but we'll convert
             
             const countryUTCOffsets = {
                 'AE': 4,  // UTC+4
@@ -1268,7 +1236,7 @@
                 'QA': 3,  // UTC+3
                 'IQ': 3,  // UTC+3
                 'SA': 3,  // UTC+3
-                'JO': 2,  // UTC+2
+                'JO': 2,  // UTC+2 (Note: Jordan is UTC+2, but UTC+3 in summer)
                 'BH': 3,  // UTC+3
                 'OM': 4   // UTC+4
             };
@@ -1282,7 +1250,7 @@
             const countryTime = new Date(utcTime + (3600000 * targetOffset));
             
             result.columns.P = formatTime(countryTime);
-            result.timestamps.P = countryTime;
+            result.timestamps.P = countryTime; // Store as timestamp for use in W and T calculations
             result.formulas.push(`P: cancellation_time = UTC + ${targetOffset} hours (Country: ${countryCode}) = ${result.columns.P}`);
             console.log(`P: cancellation_time = ${result.columns.P} (UTC+${targetOffset} for country ${countryCode})`);
             
@@ -1316,7 +1284,7 @@
             result.columns.S = text.includes("Scheduled") ? "TRUE" : "FALSE";
             result.formulas.push('S: is_wfa (Scheduled) = ' + result.columns.S);
             
-            // T: Before PDT Check - MODIFIED VERSION
+            // T: Before PDT Check - MODIFIED VERSION (uses cancellation time as fallback)
             console.log('=== Calculating T: Before PDT Check (Modified) ===');
             result.columns.T = "";
             
@@ -1349,11 +1317,13 @@
                 return (date2 - date1) / 1000;
             }
             
-            // U: System Late Duration
+            // U: System Late Duration - UPDATED FORMULA: IF(H<>"", (H-F)*86400, IF(P<>"", (P-F)*86400, 0))
             let U_seconds = 0;
             if (result.timestamps.H && result.timestamps.F) {
+                // Use H-F if H exists
                 U_seconds = datetimeToSeconds(result.timestamps.F, result.timestamps.H);
             } else if (result.columns.P && result.timestamps.F) {
+                // Fallback to P-F if H doesn't exist but P does
                 const P_time = parseTime(result.columns.P);
                 if (P_time) {
                     U_seconds = datetimeToSeconds(result.timestamps.F, P_time);
@@ -1375,7 +1345,7 @@
             let W_seconds = 0;
             
             // Get the dropoff time (use near dropoff first, cancellation time as fallback)
-            let dropoffTime = result.timestamps.M;
+            let dropoffTime = result.timestamps.M; // Near Dropoff
             
             // If near dropoff is not available, use cancellation time
             if (!dropoffTime && result.columns.P && result.columns.P !== 'N/A') {
@@ -1405,16 +1375,20 @@
             result.formulas.push('W: Rider Delay After Pickup = (Dropoff Time - Est. Dropoff) = ' + result.columns.W);
             console.log('W: Rider Delay After Pickup final result =', result.columns.W);
             
-            // X: Rider Delay Before Pickup
+            // X: Rider Delay Before Pickup - UPDATED FORMULA: =IF(AND(I<>"" , I>J), (I-J)*86400, IF(I = "",(P-H) *86400,0))
             let X_seconds = 0;
+            // Primary condition: IF(AND(I<>"" , I>J), (I-J)*86400
             if (result.timestamps.I && result.timestamps.J && result.timestamps.I > result.timestamps.J) {
                 X_seconds = datetimeToSeconds(result.timestamps.J, result.timestamps.I);
-            } else if (!result.columns.I && result.columns.P && result.timestamps.H) {
+            }
+            // Secondary condition: IF(I = "",(P-H) *86400,0)
+            else if (!result.columns.I && result.columns.P && result.timestamps.H) {
+                // If I is empty, calculate (P-H)
                 const P_time = parseTime(result.columns.P);
                 if (P_time) {
                     X_seconds = datetimeToSeconds(result.timestamps.H, P_time);
                     if (X_seconds < 0) {
-                        X_seconds = 0;
+                        X_seconds = 0; // Ensure non-negative
                     }
                 }
             }
@@ -1455,6 +1429,7 @@
             const tenMinutesMs = 600 * 1000;
             
             // Check if dropoff > N + 10 minutes
+            // Use dropoffTime (which could be M or P) instead of just M
             const dropoffAfterPdtPlus10 = dropoffTime && result.timestamps.N && 
                                        (dropoffTime.getTime() > (result.timestamps.N.getTime() + tenMinutesMs));
             
@@ -1546,21 +1521,22 @@
                 
                 // Determine which one is the max (with priority U > X > V)
                 if (U_value === maxValue) {
-                    finalResult.classList.add('result-long-dispatch');
+                    finalResult.classList.add('result-long-dispatch'); // U corresponds to Long Dispatch
                     if (result.columns.Z !== "Long Dispatch") {
                         finalResult.textContent = "Long Dispatch";
                     }
                 } else if (X_value === maxValue) {
-                    finalResult.classList.add('result-rider-late');
+                    finalResult.classList.add('result-rider-late'); // X corresponds to Rider Late
                     if (result.columns.Z !== "Rider Late") {
                         finalResult.textContent = "Rider Late";
                     }
                 } else if (V_value === maxValue) {
-                    finalResult.classList.add('result-vendor-late');
+                    finalResult.classList.add('result-vendor-late'); // V corresponds to Vendor Late
                     if (result.columns.Z !== "Vendor Late") {
                         finalResult.textContent = "Vendor Late";
                     }
                 } else {
+                    // Fallback if no max found (shouldn't happen)
                     finalResult.classList.add('result-on-time');
                 }
             } else {
@@ -1712,7 +1688,7 @@
             debugHTML += `Country: ${result.columns.C}\n`;
             debugHTML += `Country UTC Offset: UTC+${getUTCOffsetForCountry(result.columns.C)}\n`;
             
-            // Add W calculation details
+            // Add W calculation details - FIXED: Don't use formatTime function
             debugHTML += '\nW & T Calculation Details:\n';
             debugHTML += `Near Dropoff (M): ${result.columns.M}\n`;
             debugHTML += `Using cancellation time for W: ${!result.columns.M && result.columns.P ? 'Yes' : 'No'}\n`;
