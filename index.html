@@ -1,77 +1,1902 @@
-// Add this NEW function
-function directTest() {
-    const testUrl = DEPLOYMENT_URL + '?B=TEST123&C=TEST&Z=TestResult&timestamp=' + new Date().toISOString();
-    console.log('Direct test URL:', testUrl);
-    
-    // Open in new tab
-    window.open(testUrl, '_blank');
-    
-    // Also try fetch
-    fetch(testUrl)
-        .then(response => response.text())
-        .then(text => {
-            console.log('Direct test response:', text);
-            try {
-                const json = JSON.parse(text);
-                if (json.success) {
-                    alert('✅ Test successful! Data saved to row ' + json.row);
-                } else {
-                    alert('❌ Test failed: ' + (json.message || 'Unknown error'));
-                }
-            } catch {
-                alert('⚠️ Got response: ' + text.substring(0, 100));
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Analysis Tool - Complete</title>
+    <style>
+        /* Same CSS as before */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .input-section {
+            margin-bottom: 30px;
+        }
+        
+        .input-section label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #333;
+            font-size: 1.1em;
+        }
+        
+        textarea {
+            width: 100%;
+            height: 250px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+            transition: all 0.3s;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .button-container {
+            text-align: center;
+            margin: 30px 0;
+        }
+        
+        .analyze-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        
+        .analyze-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .analyze-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .loading {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .result-container {
+            display: none;
+            animation: fadeIn 0.5s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .final-result {
+            font-size: 24px;
+            font-weight: 600;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .result-before-pdt {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+        
+        .result-vendor-late {
+            background: #fff3cd;
+            color: #856404;
+            border: 2px solid #ffeaa7;
+        }
+        
+        .result-rider-late {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+        
+        .result-long-dispatch {
+            background: #cce5ff;
+            color: #004085;
+            border: 2px solid #b8daff;
+        }
+        
+        .result-on-time {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 2px solid #bee5eb;
+        }
+        
+        .columns-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .column-group {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .column-group h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+            font-size: 1.2em;
+        }
+        
+        .column-item {
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px dashed #dee2e6;
+        }
+        
+        .column-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        
+        .column-label {
+            font-weight: 600;
+            color: #495057;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+        
+        .column-value {
+            color: #212529;
+            font-weight: 500;
+            font-size: 1.1em;
+            word-break: break-all;
+        }
+        
+        .time-value {
+            color: #e83e8c;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .seconds-value {
+            color: #20c997;
+            font-weight: 600;
+        }
+        
+        .boolean-true {
+            color: #28a745;
+            font-weight: 600;
+        }
+        
+        .boolean-false {
+            color: #dc3545;
+            font-weight: 600;
+        }
+        
+        .column-note {
+            font-size: 0.8em;
+            color: #6c757d;
+            margin-top: 3px;
+            font-style: italic;
+        }
+        
+        .formula-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            margin-top: 30px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .formula-section h3 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+        }
+        
+        .formula-step {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            overflow-x: auto;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 1px solid #f5c6cb;
+            display: none;
+        }
+        
+        .debug-toggle {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .debug-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s;
+        }
+        
+        .debug-btn:hover {
+            background: #545b62;
+        }
+        
+        .debug-info {
+            background: #212529;
+            color: #20c997;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            white-space: pre-wrap;
+            display: none;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        @media (max-width: 768px) {
+            .columns-grid {
+                grid-template-columns: 1fr;
             }
-        })
-        .catch(error => {
-            console.error('Direct test error:', error);
-            alert('⚠️ Fetch failed, but new tab opened. Check Google Sheets.');
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Late Owner Analysis Tool</h1>
+            <p>Created by talabat SSC Analytics Team</p>
+            <p style="margin-top: 10px; font-size: 0.9em; opacity: 0.8;">Connected to Google Apps Script API</p>
+        </div>
+        
+        <div class="content">
+            <div class="input-section">
+                <label for="orderDetails">📋 Paste Order Details (Column A content):</label>
+                <textarea id="orderDetails" placeholder="Paste the complete order details here..."></textarea>
+            </div>
+            
+            <div class="error" id="errorMessage"></div>
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Analyzing order details...</p>
+            </div>
+            
+            <div class="button-container">
+                <button class="analyze-btn" id="analyzeBtn" onclick="analyzeOrder()">🚀 Analyze Order</button>
+            </div>
+            
+            <div class="result-container" id="resultContainer">
+                <div class="result-header">
+                    <div>
+                        <h2>Analysis Result:</h2>
+                        <p style="color: #666; margin-top: 5px;">Column Z equivalent calculation</p>
+                    </div>
+                    <div class="final-result" id="finalResult"></div>
+                </div>
+                
+                <div class="columns-grid" id="columnsGrid">
+                    <!-- Columns B-Z will be populated here -->
+                </div>
+                
+                <div class="formula-section">
+                    <h3>🧮 Formula Calculations:</h3>
+                    <div id="formulaSteps"></div>
+                </div>
+                
+                <div class="debug-toggle">
+                    <button class="debug-btn" onclick="toggleDebug()">🔍 Show Debug Info</button>
+                    <div class="debug-info" id="debugInfo"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Google Apps Script deployment URL
+        const DEPLOYMENT_URL = 'https://script.google.com/a/macros/talabat.com/s/AKfycbzUBMirdPN0UUQU1Lm8pB14QGNjn4NORepBkc4HwP1LfMKNXG0iXGoPqkhbmcGhYX4DhQ/exec';
+        
+        let debugData = {};
+        
+        function toggleDebug() {
+            const debug = document.getElementById('debugInfo');
+            debug.style.display = debug.style.display === 'block' ? 'none' : 'block';
+        }
+        
+        async function analyzeOrder() {
+            const details = document.getElementById('orderDetails').value.trim();
+            const errorDiv = document.getElementById('errorMessage');
+            const loadingDiv = document.getElementById('loading');
+            const resultContainer = document.getElementById('resultContainer');
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            
+            // Reset UI
+            errorDiv.style.display = 'none';
+            resultContainer.style.display = 'none';
+            document.getElementById('debugInfo').style.display = 'none';
+            
+            // Validate input
+            if (!details) {
+                errorDiv.textContent = 'Please paste order details in the text area';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            
+            // Show loading
+            loadingDiv.style.display = 'block';
+            analyzeBtn.disabled = true;
+            analyzeBtn.textContent = 'Processing...';
+            
+            try {
+                // Call Google Apps Script API
+                const response = await fetch(DEPLOYMENT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        orderDetails: details
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                
+                if (result.error) {
+                    throw new Error(result.error);
+                }
+                
+                // Update result display
+                updateResultDisplay(result);
+                
+                // Show result
+                resultContainer.style.display = 'block';
+                
+                // Update debug info
+                updateDebugInfo(result);
+                
+            } catch (error) {
+                console.error('API Error:', error);
+                
+                // Fallback to local processing if API fails
+                console.log('API failed, falling back to local processing...');
+                try {
+                    const localResult = processOrderDetails(details);
+                    debugData = localResult;
+                    
+                    // Update result display
+                    updateResultDisplay(localResult);
+                    
+                    // Show result
+                    resultContainer.style.display = 'block';
+                    
+                    // Update debug info
+                    updateDebugInfo(localResult);
+                    
+                    // Show warning about fallback
+                    errorDiv.textContent = '⚠️ Using local processing (API connection failed)';
+                    errorDiv.style.display = 'block';
+                    errorDiv.style.background = '#fff3cd';
+                    errorDiv.style.color = '#856404';
+                    errorDiv.style.borderColor = '#ffeaa7';
+                    
+                } catch (fallbackError) {
+                    errorDiv.textContent = 'Error processing details: ' + error.message + ' (Fallback also failed)';
+                    errorDiv.style.display = 'block';
+                }
+            } finally {
+                // Hide loading
+                loadingDiv.style.display = 'none';
+                analyzeBtn.disabled = false;
+                analyzeBtn.textContent = '🚀 Analyze Order';
+            }
+        }
+        
+        function processOrderDetails(text) {
+            const result = {
+                columns: {},
+                timestamps: {},
+                extracted: {},
+                formulas: []
+            };
+            
+            console.log('Processing text...');
+            
+            // Helper: Parse time string to Date object - FIXED VERSION
+            function parseTime(timeStr) {
+                if (!timeStr) return null;
+                
+                console.log('Parsing time string:', timeStr);
+                
+                // Clean the time string - normalize format
+                let cleaned = timeStr.trim().toLowerCase();
+                
+                // Remove any spaces in am/pm
+                cleaned = cleaned.replace(/\s+(am|pm)/, '$1');
+                
+                // Match time pattern
+                const timeMatch = cleaned.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)$/);
+                if (!timeMatch) {
+                    console.log('No time match for:', timeStr);
+                    return null;
+                }
+                
+                let hours = parseInt(timeMatch[1]);
+                const minutes = parseInt(timeMatch[2]);
+                const seconds = timeMatch[3] ? parseInt(timeMatch[3]) : 0;
+                const period = timeMatch[4];
+                
+                console.log('Time components:', { hours, minutes, seconds, period });
+                
+                // Convert to 24-hour format - FIXED LOGIC
+                if (period === 'pm') {
+                    if (hours < 12) {
+                        hours += 12;
+                    }
+                    // 12 pm stays 12 (noon)
+                } else if (period === 'am') {
+                    if (hours === 12) {
+                        hours = 0; // 12 am is midnight
+                    }
+                    // All other am times stay as-is
+                }
+                
+                // Validate
+                if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59 || seconds < 0 || seconds > 59) {
+                    console.log('Invalid time:', hours, minutes, seconds);
+                    return null;
+                }
+                
+                const date = new Date();
+                date.setHours(hours, minutes, seconds, 0);
+                console.log('Parsed time result - getHours():', date.getHours(), 'formatted:', date.toLocaleTimeString('en-US', { hour12: true }));
+                return date;
+            }
+            
+            // Helper: Parse date string
+            function parseDate(dateStr) {
+                if (!dateStr) return null;
+                
+                console.log('Parsing date:', dateStr);
+                
+                // Try multiple patterns
+                // Pattern 1: "Mon 22 Dec" (with day name)
+                const dateMatch1 = dateStr.match(/(\w{3})\s+(\d{1,2})\s+(\w{3})/i);
+                
+                // Pattern 2: Just "22 Dec" (without day name)
+                const dateMatch2 = dateStr.match(/(\d{1,2})\s+(\w{3})/i);
+                
+                let dateNum, month;
+                
+                if (dateMatch1) {
+                    dateNum = parseInt(dateMatch1[2]);
+                    month = dateMatch1[3];
+                    console.log('Pattern 1 matched:', dateMatch1[0]);
+                } else if (dateMatch2) {
+                    dateNum = parseInt(dateMatch2[1]);
+                    month = dateMatch2[2];
+                    console.log('Pattern 2 matched:', dateMatch2[0]);
+                } else {
+                    console.log('No date match for:', dateStr);
+                    return null;
+                }
+                
+                const now = new Date();
+                const year = now.getFullYear();
+                
+                const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 
+                                   'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+                const monthIndex = monthNames.indexOf(month.toLowerCase());
+                
+                if (monthIndex === -1) {
+                    console.log('Invalid month:', month);
+                    return null;
+                }
+                
+                const dateObj = new Date(year, monthIndex, dateNum, 0, 0, 0);
+                console.log('Parsed date:', dateStr, '->', dateObj.toLocaleDateString());
+                return dateObj;
+            }
+            
+            // Helper: Format time as HH:MM:SS AM/PM - FIXED VERSION
+            function formatTime(date) {
+                if (!date) return '';
+                
+                // Get local time components
+                let hours = date.getHours();
+                const minutes = date.getMinutes();
+                const seconds = date.getSeconds();
+                
+                // Determine AM/PM
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                
+                // Convert to 12-hour format
+                hours = hours % 12;
+                hours = hours ? hours : 12; // 0 becomes 12
+                
+                // Format with leading zeros
+                const hoursStr = hours.toString().padStart(2, '0');
+                const minutesStr = minutes.toString().padStart(2, '0');
+                const secondsStr = seconds.toString().padStart(2, '0');
+                
+                return `${hoursStr}:${minutesStr}:${secondsStr} ${ampm}`;
+            }
+            
+            // Helper: Format date as MM/DD/YYYY
+            function formatDate(date) {
+                if (!date) return '';
+                return (date.getMonth() + 1) + '/' + date.getDate() + '/' + date.getFullYear();
+            }
+            
+            // Helper: Format datetime
+            function formatDateTime(date) {
+                if (!date) return '';
+                return formatDate(date) + ' ' + formatTime(date);
+            }
+            
+            // NEW HELPER: Find timeline event with dual pattern search
+            function findTimelineEvent(eventName) {
+                console.log(`=== Searching for ${eventName} ===`);
+                
+                // Pattern 1: "Something Delivery Something" (original pattern)
+                const pattern1 = new RegExp(`(\\d{1,2}:\\d{2}\\s*[ap]m)\\s+${eventName}\\s+Delivery\\s+${eventName}`, 'gi');
+                const matches1 = [...text.matchAll(pattern1)];
+                
+                // Pattern 2: "Something -" (alternative pattern)
+                const pattern2 = new RegExp(`(\\d{1,2}:\\d{2}\\s*[ap]m)\\s+${eventName}\\s*-`, 'gi');
+                const matches2 = [...text.matchAll(pattern2)];
+                
+                console.log(`Pattern 1 matches for ${eventName}:`, matches1.length);
+                console.log(`Pattern 2 matches for ${eventName}:`, matches2.length);
+                
+                let finalMatch = null;
+                
+                // Try pattern 1 first
+                if (matches1.length > 0) {
+                    finalMatch = matches1[matches1.length - 1][0];
+                    console.log(`Found ${eventName} with Pattern 1:`, finalMatch);
+                }
+                // If pattern 1 fails, try pattern 2
+                else if (matches2.length > 0) {
+                    finalMatch = matches2[matches2.length - 1][0];
+                    console.log(`Found ${eventName} with Pattern 2:`, finalMatch);
+                }
+                
+                if (finalMatch) {
+                    // Extract the time from the match
+                    const timeMatch = finalMatch.match(/(\d{1,2}:\d{2}\s*[ap]m)/i);
+                    if (timeMatch) {
+                        return timeMatch[1];
+                    }
+                }
+                
+                console.log(`No match found for ${eventName} with either pattern`);
+                return null;
+            }
+            
+            // B: Order ID
+            const backendMatch = text.match(/(\d+)\s*Backend\s*Link/i);
+            result.columns.B = backendMatch ? backendMatch[1].trim() : '';
+            result.formulas.push('B: Order ID = ' + result.columns.B);
+            console.log('B: Order ID =', result.columns.B);
+            
+            // C: Country - UPDATED to handle both TB_ and HF_ prefixes
+            let countryMatch = text.match(/TB_([A-Z]{2})/i);
+            if (!countryMatch) {
+                // Try HF_ pattern if TB_ not found
+                countryMatch = text.match(/HF_([A-Z]{2})/i);
+            }
+            result.columns.C = countryMatch ? countryMatch[1].trim() : '';
+            result.formulas.push('C: Country = ' + result.columns.C);
+            console.log('C: Country =', result.columns.C);
+            
+            // D: Order Date
+            const dateMatch = text.match(/Ordered at\s*[:]?\s*(\w{3}\s+\d{1,2}\s+\w{3}|\d{1,2}\s+\w{3})/i);
+            let orderDate = null;
+            if (dateMatch) {
+                console.log('Date match found:', dateMatch[1]);
+                orderDate = parseDate(dateMatch[1]);
+                result.columns.D = orderDate ? formatDate(orderDate) : '';
+            } else {
+                console.log('No date match found');
+            }
+            result.formulas.push('D: Order Date = ' + result.columns.D);
+            console.log('D: Order Date =', result.columns.D);
+            
+            // E: Ordered at - FIXED MULTILINE VERSION
+            console.log('=== Searching for E: Ordered at ===');
+            
+            // Method 1: Look for "Ordered at" then capture time from next line (multiline)
+            const orderedAtRegex1 = /Ordered\s+at[\s\S]*?(\d{1,2}:\d{2}\s*[ap]m)/i;
+            const orderedTimeMatch1 = text.match(orderedAtRegex1);
+            
+            let orderedTime = null;
+            if (orderedTimeMatch1) {
+                console.log('Ordered at regex 1 matched:', orderedTimeMatch1[1]);
+                console.log('Full match (first 100 chars):', orderedTimeMatch1[0].substring(0, 100));
+                orderedTime = parseTime(orderedTimeMatch1[1]);
+            }
+            
+            // Method 2: If first method fails, try line-by-line search
+            if (!orderedTime) {
+                console.log('Ordered at regex 1 failed, trying line search...');
+                const lines = text.split('\n');
+                for (let i = 0; i < lines.length; i++) {
+                    if (lines[i].includes('Ordered at')) {
+                        console.log('Found "Ordered at" on line', i, ':', lines[i]);
+                        // Check current line for time
+                        let timeMatch = lines[i].match(/(\d{1,2}:\d{2}\s*[ap]m)/i);
+                        if (timeMatch) {
+                            console.log('Found time on same line:', timeMatch[1]);
+                            orderedTime = parseTime(timeMatch[1]);
+                            break;
+                        }
+                        // Check next line
+                        if (i + 1 < lines.length) {
+                            timeMatch = lines[i + 1].match(/(\d{1,2}:\d{2}\s*[ap]m)/i);
+                            if (timeMatch) {
+                                console.log('Found time on next line:', timeMatch[1]);
+                                orderedTime = parseTime(timeMatch[1]);
+                                break;
+                            }
+                        }
+                        // Check line after next
+                        if (i + 2 < lines.length) {
+                            timeMatch = lines[i + 2].match(/(\d{1,2}:\d{2}\s*[ap]m)/i);
+                            if (timeMatch) {
+                                console.log('Found time on line after next:', timeMatch[1]);
+                                orderedTime = parseTime(timeMatch[1]);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Method 3: Try a more specific pattern for the structure
+            if (!orderedTime) {
+                console.log('Line search failed, trying specific pattern...');
+                const orderedAtRegex3 = /Ordered\s+at\s*\n\s*[^\n]*?(\d{1,2}:\d{2}\s*[ap]m)/i;
+                const orderedTimeMatch3 = text.match(orderedAtRegex3);
+                if (orderedTimeMatch3) {
+                    console.log('Ordered at regex 3 matched:', orderedTimeMatch3[1]);
+                    orderedTime = parseTime(orderedTimeMatch3[1]);
+                }
+            }
+            
+            if (orderedTime) {
+                console.log('Ordered at time successfully parsed:', formatTime(orderedTime));
+                result.columns.E = formatTime(orderedTime);
+            } else {
+                console.log('No ordered time found after all attempts');
+                result.columns.E = 'N/A';
+            }
+            result.formulas.push('E: Ordered at = ' + result.columns.E);
+            console.log('E: Ordered at =', result.columns.E);
+            
+            // If no order date yet, use today
+            if (!orderDate) {
+                orderDate = new Date();
+                orderDate.setHours(0, 0, 0, 0);
+                result.columns.D = formatDate(orderDate);
+            }
+            
+            // Store base values for calculations
+            const baseDate = orderDate;
+            const baseTime = orderedTime;
+            
+            console.log('Base date:', baseDate.toLocaleDateString());
+            console.log('Base time:', baseTime ? baseTime.toLocaleTimeString() : 'null');
+            
+            // Helper: Combine date and time, adjust for midnight crossing
+            function combineDateTime(datePart, timeValue, referenceTime) {
+                if (!datePart || !timeValue) return null;
+                
+                const dateTime = new Date(datePart);
+                dateTime.setHours(timeValue.getHours(), timeValue.getMinutes(), timeValue.getSeconds());
+                
+                if (referenceTime && timeValue < referenceTime) {
+                    dateTime.setDate(dateTime.getDate() + 1);
+                    console.log('Adjusted date +1 day for crossing midnight');
+                }
+                
+                return dateTime;
+            }
+            
+            // F: Queued At - USING DUAL PATTERN SEARCH
+            const queuedTimeStr = findTimelineEvent('Queued');
+            if (queuedTimeStr) {
+                console.log('Queued time found:', queuedTimeStr);
+                const queuedTime = parseTime(queuedTimeStr);
+                if (queuedTime) {
+                    result.timestamps.F = combineDateTime(baseDate, queuedTime, baseTime);
+                    result.columns.F = result.timestamps.F ? formatDateTime(result.timestamps.F) : '';
+                }
+            } else {
+                // Fallback to old pattern if new search fails
+                const queuedMatch = text.match(/(\d{1,2}:\d{2}\s?[apm]+)\s*Queued/i);
+                if (queuedMatch) {
+                    console.log('Queued fallback match found:', queuedMatch[1]);
+                    const queuedTime = parseTime(queuedMatch[1]);
+                    if (queuedTime) {
+                        result.timestamps.F = combineDateTime(baseDate, queuedTime, baseTime);
+                        result.columns.F = result.timestamps.F ? formatDateTime(result.timestamps.F) : '';
+                    }
+                }
+            }
+            result.formulas.push('F: Queued At = ' + result.columns.F);
+            
+            // G: Courier Notified - USING DUAL PATTERN SEARCH
+            const courierTimeStr = findTimelineEvent('Courier Notified');
+            if (courierTimeStr) {
+                console.log('Courier Notified time found:', courierTimeStr);
+                const courierTime = parseTime(courierTimeStr);
+                if (courierTime) {
+                    result.timestamps.G = combineDateTime(baseDate, courierTime, baseTime);
+                    result.columns.G = result.timestamps.G ? formatTime(result.timestamps.G) : '';
+                }
+            } else {
+                // Fallback to old pattern if new search fails
+                const courierMatch = text.match(/(\d{1,2}:\d{2}\s?[apm]+)\s+Courier\s+Notified/i);
+                if (courierMatch) {
+                    console.log('Courier fallback match found:', courierMatch[1]);
+                    const courierTime = parseTime(courierMatch[1]);
+                    if (courierTime) {
+                        result.timestamps.G = combineDateTime(baseDate, courierTime, baseTime);
+                        result.columns.G = result.timestamps.G ? formatTime(result.timestamps.G) : '';
+                    }
+                }
+            }
+            result.formulas.push('G: Courier Notified = ' + result.columns.G);
+            
+            // H: Accepted At - USING DUAL PATTERN SEARCH
+            const acceptedTimeStr = findTimelineEvent('Accepted');
+            if (acceptedTimeStr) {
+                console.log('Accepted time found:', acceptedTimeStr);
+                const acceptedTime = parseTime(acceptedTimeStr);
+                if (acceptedTime) {
+                    result.timestamps.H = combineDateTime(baseDate, acceptedTime, baseTime);
+                    result.columns.H = result.timestamps.H ? formatTime(result.timestamps.H) : '';
+                }
+            } else {
+                // Fallback to old pattern if new search fails
+                const acceptedMatches = [...text.matchAll(/(\d{1,2}:\d{2}\s*[ap]m)\s+Accepted\s+Delivery\s+Accepted/gi)];
+                if (acceptedMatches.length > 0) {
+                    const lastAccepted = acceptedMatches[acceptedMatches.length - 1][0];
+                    const timeMatch = lastAccepted.match(/(\d{1,2}:\d{2}\s*[ap]m)/i);
+                    if (timeMatch) {
+                        console.log('Accepted fallback match found:', timeMatch[1]);
+                        const acceptedTime = parseTime(timeMatch[1]);
+                        if (acceptedTime) {
+                            result.timestamps.H = combineDateTime(baseDate, acceptedTime, baseTime);
+                            result.columns.H = result.timestamps.H ? formatTime(result.timestamps.H) : '';
+                        }
+                    }
+                }
+            }
+            result.formulas.push('H: Accepted At = ' + result.columns.H);
+            
+            // I: Near Pickup - USING DUAL PATTERN SEARCH
+            const nearPickupTimeStr = findTimelineEvent('Near Pickup');
+            if (nearPickupTimeStr) {
+                console.log('Near Pickup time found:', nearPickupTimeStr);
+                const nearPickupTime = parseTime(nearPickupTimeStr);
+                if (nearPickupTime) {
+                    result.timestamps.I = combineDateTime(baseDate, nearPickupTime, baseTime);
+                    result.columns.I = result.timestamps.I ? formatTime(result.timestamps.I) : '';
+                }
+            } else {
+                // Fallback to old pattern if new search fails
+                const nearPickupMatches = [...text.matchAll(/(\d{1,2}:\d{2}\s*[ap]m)\s+Near\s+Pickup\s+Delivery\s+Near\s+Pickup/gi)];
+                if (nearPickupMatches.length > 0) {
+                    const lastNearPickup = nearPickupMatches[nearPickupMatches.length - 1][0];
+                    const timeMatch = lastNearPickup.match(/(\d{1,2}:\d{2}\s*[ap]m)/i);
+                    if (timeMatch) {
+                        console.log('Near Pickup fallback match found:', timeMatch[1]);
+                        const nearPickupTime = parseTime(timeMatch[1]);
+                        if (nearPickupTime) {
+                            result.timestamps.I = combineDateTime(baseDate, nearPickupTime, baseTime);
+                            result.columns.I = result.timestamps.I ? formatTime(result.timestamps.I) : '';
+                        }
+                    }
+                }
+            }
+            result.formulas.push('I: Near Pickup = ' + result.columns.I);
+            
+            // J: Est. Pickup (CPT)
+            const acceptedDashMatches = [...text.matchAll(/Accepted\s*[-]\s*(\d{1,2}:\d{2}\s*[apm]{2})/gi)];
+            if (acceptedDashMatches.length > 0) {
+                const lastAcceptedDash = acceptedDashMatches[acceptedDashMatches.length - 1][1];
+                console.log('Accepted - time match found:', lastAcceptedDash);
+                const estPickupTime = parseTime(lastAcceptedDash);
+                if (estPickupTime) {
+                    result.timestamps.J = combineDateTime(baseDate, estPickupTime, baseTime);
+                    result.columns.J = result.timestamps.J ? formatTime(result.timestamps.J) : '';
+                }
+            }
+            
+            // Alternative for J: Look in timeline
+            if (!result.columns.J) {
+                const timelineSection = text.match(/Time\s+Event[\s\S]*?(?:\n\n|ID\s+\d|More Details|$)/i);
+                if (timelineSection) {
+                    const timelineText = timelineSection[0];
+                    const estPickupMatch = timelineText.match(/(\d{1,2}:\d{2}\s*[AP]M)[^\n]*Est\.pickup arrival/i);
+                    if (estPickupMatch) {
+                        console.log('Est. Pickup in timeline:', estPickupMatch[1]);
+                        const estPickupTime = parseTime(estPickupMatch[1]);
+                        if (estPickupTime) {
+                            result.timestamps.J = combineDateTime(baseDate, estPickupTime, baseTime);
+                            result.columns.J = result.timestamps.J ? formatTime(result.timestamps.J) : '';
+                        }
+                    }
+                }
+            }
+            result.formulas.push('J: Est. Pickup (CPT) = ' + result.columns.J);
+            console.log('J: Est. Pickup (CPT) =', result.columns.J);
+            
+            // K: Picked Up At - USING DUAL PATTERN SEARCH
+            const pickedUpTimeStr = findTimelineEvent('Picked Up');
+            if (pickedUpTimeStr) {
+                console.log('Picked Up time found:', pickedUpTimeStr);
+                const pickedUpTime = parseTime(pickedUpTimeStr);
+                if (pickedUpTime) {
+                    result.timestamps.K = combineDateTime(baseDate, pickedUpTime, baseTime);
+                    result.columns.K = result.timestamps.K ? formatTime(result.timestamps.K) : '';
+                }
+            } else {
+                // Fallback to old pattern if new search fails
+                const pickedUpMatches = [...text.matchAll(/(\d{1,2}:\d{2}\s*[ap]m)\s+Picked\s+Up\s+Delivery\s+Picked\s+Up/gi)];
+                if (pickedUpMatches.length > 0) {
+                    const lastPickedUp = pickedUpMatches[pickedUpMatches.length - 1][0];
+                    const timeMatch = lastPickedUp.match(/(\d{1,2}:\d{2}\s*[ap]m)/i);
+                    if (timeMatch) {
+                        console.log('Picked Up fallback match found:', timeMatch[1]);
+                        const pickedUpTime = parseTime(timeMatch[1]);
+                        if (pickedUpTime) {
+                            result.timestamps.K = combineDateTime(baseDate, pickedUpTime, baseTime);
+                            result.columns.K = result.timestamps.K ? formatTime(result.timestamps.K) : '';
+                        }
+                    }
+                }
+            }
+            result.formulas.push('K: Picked Up At = ' + result.columns.K);
+            
+            // L: Est. Dropoff
+            console.log('=== Searching for L: Est. Dropoff ===');
+            
+            // Method 1: Use your exact Google Sheets formula pattern
+            const estDropoffRegex = /Picked\s+Up\s+[^0-9\n]*(\d{1,2}:\d{2}\s*[APM]{2})/i;
+            const estDropoffMatch = text.match(estDropoffRegex);
+            
+            if (estDropoffMatch) {
+                console.log('Method 1 - Google Sheets pattern matched:', estDropoffMatch[1]);
+                const estDropoffTime = parseTime(estDropoffMatch[1]);
+                if (estDropoffTime) {
+                    // IF(time < E2, time + D2 + 1, time + D2)
+                    if (estDropoffTime < baseTime) {
+                        const nextDay = new Date(baseDate);
+                        nextDay.setDate(nextDay.getDate() + 1);
+                        result.timestamps.L = combineDateTime(nextDay, estDropoffTime, baseTime);
+                    } else {
+                        result.timestamps.L = combineDateTime(baseDate, estDropoffTime, baseTime);
+                    }
+                    result.columns.L = result.timestamps.L ? formatTime(result.timestamps.L) : '';
+                    console.log('L: Est. Dropoff calculated with Method 1:', result.columns.L);
+                }
+            }
+            
+            // Method 2: Look for specific timeline pattern from your data
+            if (!result.columns.L) {
+                console.log('Method 1 failed, trying Method 2...');
+                const timelinePattern = /(\d{1,2}:\d{2}\s*[AP]M)[^0-9]*Picked\s+Up[^0-9\-]*(-[^0-9\-]*){3}[^0-9]*(\d{1,2}:\d{2}\s*[AP]M)/i;
+                const timelineMatch = text.match(timelinePattern);
+                
+                if (timelineMatch) {
+                    console.log('Method 2 - Timeline pattern matched. First time:', timelineMatch[1], 'Second time:', timelineMatch[3]);
+                    const estDropoffTime = parseTime(timelineMatch[3]);
+                    if (estDropoffTime) {
+                        result.timestamps.L = combineDateTime(baseDate, estDropoffTime, baseTime);
+                        result.columns.L = result.timestamps.L ? formatTime(result.timestamps.L) : '';
+                        console.log('L: Est. Dropoff calculated with Method 2:', result.columns.L);
+                    }
+                }
+            }
+            
+            // Method 3: Look for Picked Up row with multiple times
+            if (!result.columns.L) {
+                console.log('Method 2 failed, trying Method 3...');
+                const lines = text.split('\n');
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (line.includes('Picked Up')) {
+                        console.log('Found Picked Up line:', line);
+                        const times = [...line.matchAll(/(\d{1,2}:\d{2}\s*[AP]M)/gi)];
+                        console.log('Times in line:', times.map(t => t[0]));
+                        
+                        if (times.length >= 2) {
+                            const lastTime = times[times.length - 1][0];
+                            console.log('Trying last time:', lastTime);
+                            const estDropoffTime = parseTime(lastTime);
+                            if (estDropoffTime) {
+                                result.timestamps.L = combineDateTime(baseDate, estDropoffTime, baseTime);
+                                result.columns.L = result.timestamps.L ? formatTime(result.timestamps.L) : '';
+                                console.log('L: Est. Dropoff calculated with Method 3 (last time):', result.columns.L);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Method 4: Look for Est.dropoff arrival specifically
+            if (!result.columns.L) {
+                console.log('Method 3 failed, trying Method 4...');
+                const estDropoffArrivalMatch = text.match(/Est\.dropoff\s+arrival[^0-9\n]*(\d{1,2}:\d{2}\s*[AP]M)/i);
+                if (estDropoffArrivalMatch) {
+                    console.log('Method 4 - Est.dropoff arrival matched:', estDropoffArrivalMatch[1]);
+                    const estDropoffTime = parseTime(estDropoffArrivalMatch[1]);
+                    if (estDropoffTime) {
+                        result.timestamps.L = combineDateTime(baseDate, estDropoffTime, baseTime);
+                        result.columns.L = result.timestamps.L ? formatTime(result.timestamps.L) : '';
+                        console.log('L: Est. Dropoff calculated with Method 4:', result.columns.L);
+                    }
+                }
+            }
+            
+            // Method 5: Search in the timeline table section
+            if (!result.columns.L) {
+                console.log('Method 4 failed, trying Method 5...');
+                const timelineStart = text.search(/Time\s+Event/i);
+                if (timelineStart !== -1) {
+                    const timelineEnd = text.indexOf('\n\n', timelineStart);
+                    const timelineText = text.substring(timelineStart, timelineEnd !== -1 ? timelineEnd : text.length);
+                    
+                    const pickedUpRowMatch = timelineText.match(/Picked\s+Up[^\n]*(\d{1,2}:\d{2}\s*[AP]M)[^\n]*$/im);
+                    if (pickedUpRowMatch) {
+                        console.log('Method 5 - Picked Up row in timeline matched time:', pickedUpRowMatch[1]);
+                        const estDropoffTime = parseTime(pickedUpRowMatch[1]);
+                        if (estDropoffTime) {
+                            result.timestamps.L = combineDateTime(baseDate, estDropoffTime, baseTime);
+                            result.columns.L = result.timestamps.L ? formatTime(result.timestamps.L) : '';
+                            console.log('L: Est. Dropoff calculated with Method 5:', result.columns.L);
+                        }
+                    }
+                }
+            }
+            
+            // Last resort: Use PDT as fallback (often same as Est. Dropoff)
+            if (!result.columns.L && result.columns.N) {
+                console.log('All methods failed, using PDT as fallback for L: Est. Dropoff');
+                result.timestamps.L = result.timestamps.N;
+                result.columns.L = result.columns.N;
+            }
+            
+            result.formulas.push('L: Est. Dropoff = ' + result.columns.L);
+            console.log('=== L: Est. Dropoff final result =', result.columns.L, '===');
+            
+            // M: Near Dropoff - USING DUAL PATTERN SEARCH
+            const nearDropoffTimeStr = findTimelineEvent('Near Dropoff');
+            if (nearDropoffTimeStr) {
+                console.log('Near Dropoff time found:', nearDropoffTimeStr);
+                const nearDropoffTime = parseTime(nearDropoffTimeStr);
+                if (nearDropoffTime) {
+                    result.timestamps.M = combineDateTime(baseDate, nearDropoffTime, baseTime);
+                    result.columns.M = result.timestamps.M ? formatTime(result.timestamps.M) : '';
+                }
+            } else {
+                // Fallback to old pattern if new search fails
+                const nearDropoffMatches = [...text.matchAll(/(\d{1,2}:\d{2}\s*[ap]m)\s+Near\s+Dropoff\s+Delivery\s+Near\s+Dropoff/gi)];
+                if (nearDropoffMatches.length > 0) {
+                    const lastNearDropoff = nearDropoffMatches[nearDropoffMatches.length - 1][0];
+                    const timeMatch = lastNearDropoff.match(/(\d{1,2}:\d{2}\s*[ap]m)/i);
+                    if (timeMatch) {
+                        console.log('Near Dropoff fallback match found:', timeMatch[1]);
+                        const nearDropoffTime = parseTime(timeMatch[1]);
+                        if (nearDropoffTime) {
+                            result.timestamps.M = combineDateTime(baseDate, nearDropoffTime, baseTime);
+                            result.columns.M = result.timestamps.M ? formatTime(result.timestamps.M) : '';
+                        }
+                    }
+                }
+            }
+            result.formulas.push('M: Near Dropoff = ' + result.columns.M);
+            
+            // N: PDT - FIXED MULTILINE VERSION
+            console.log('=== Searching for N: PDT ===');
+            
+            // Method 1: Use [\s\S]*? to match across multiple lines
+            const pdtRegex1 = /PDT[\s\S]*?(\d{1,2}:\d{2}\s*[ap]m)/i;
+            const pdtMatch1 = text.match(pdtRegex1);
+            
+            let pdtTime = null;
+            if (pdtMatch1) {
+                console.log('PDT regex 1 matched:', pdtMatch1[1]);
+                console.log('Full match (first 100 chars):', pdtMatch1[0].substring(0, 100));
+                pdtTime = parseTime(pdtMatch1[1]);
+            }
+            
+            // Method 2: If first method fails, try a more specific pattern
+            if (!pdtTime) {
+                console.log('PDT regex 1 failed, trying method 2...');
+                const pdtRegex2 = /PDT\s*\n?\s*[^\n]*?\s*(\d{1,2}:\d{2}\s*[ap]m)/i;
+                const pdtMatch2 = text.match(pdtRegex2);
+                if (pdtMatch2) {
+                    console.log('PDT regex 2 matched:', pdtMatch2[1]);
+                    pdtTime = parseTime(pdtMatch2[1]);
+                }
+            }
+            
+            // Method 3: Manual search through lines
+            if (!pdtTime) {
+                console.log('PDT regex 2 failed, trying method 3 (line search)...');
+                const lines = text.split('\n');
+                for (let i = 0; i < lines.length; i++) {
+                    if (lines[i].includes('PDT')) {
+                        console.log('Found PDT on line', i, ':', lines[i]);
+                        // Check current line for time
+                        let timeMatch = lines[i].match(/(\d{1,2}:\d{2}\s*[ap]m)/i);
+                        if (timeMatch) {
+                            console.log('Found time on same line:', timeMatch[1]);
+                            pdtTime = parseTime(timeMatch[1]);
+                            break;
+                        }
+                        // Check next line
+                        if (i + 1 < lines.length) {
+                            timeMatch = lines[i + 1].match(/(\d{1,2}:\d{2}\s*[ap]m)/i);
+                            if (timeMatch) {
+                                console.log('Found time on next line:', timeMatch[1]);
+                                pdtTime = parseTime(timeMatch[1]);
+                                break;
+                            }
+                        }
+                        // Check line after next
+                        if (i + 2 < lines.length) {
+                            timeMatch = lines[i + 2].match(/(\d{1,2}:\d{2}\s*[ap]m)/i);
+                            if (timeMatch) {
+                                console.log('Found time on line after next:', timeMatch[1]);
+                                pdtTime = parseTime(timeMatch[1]);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // NEW METHOD 4: If no PDT found, search for "Promised delivery time"
+            if (!pdtTime) {
+                console.log('No PDT found, searching for "Promised delivery time"...');
+                
+                // Method 4a: Look for "Promised delivery time" followed by date and time
+                const promisedRegex1 = /Promised\s+delivery\s+time\s*\n?\s*[^\n]*?\s*(\d{1,2}:\d{2}\s*[ap]m)/i;
+                const promisedMatch1 = text.match(promisedRegex1);
+                
+                if (promisedMatch1) {
+                    console.log('Promised delivery time regex 1 matched:', promisedMatch1[1]);
+                    pdtTime = parseTime(promisedMatch1[1]);
+                }
+                
+                // Method 4b: If that fails, do a line-by-line search
+                if (!pdtTime) {
+                    console.log('Promised delivery time regex failed, trying line search...');
+                    const lines = text.split('\n');
+                    for (let i = 0; i < lines.length; i++) {
+                        if (lines[i].includes('Promised delivery time')) {
+                            console.log('Found "Promised delivery time" on line', i, ':', lines[i]);
+                            
+                            // Check current line for time
+                            let timeMatch = lines[i].match(/(\d{1,2}:\d{2}\s*[ap]m)/i);
+                            if (timeMatch) {
+                                console.log('Found time on same line:', timeMatch[1]);
+                                pdtTime = parseTime(timeMatch[1]);
+                                break;
+                            }
+                            
+                            // Check next line
+                            if (i + 1 < lines.length) {
+                                timeMatch = lines[i + 1].match(/(\d{1,2}:\d{2}\s*[ap]m)/i);
+                                if (timeMatch) {
+                                    console.log('Found time on next line:', timeMatch[1]);
+                                    pdtTime = parseTime(timeMatch[1]);
+                                    break;
+                                }
+                            }
+                            
+                            // Check line after next
+                            if (i + 2 < lines.length) {
+                                timeMatch = lines[i + 2].match(/(\d{1,2}:\d{2}\s*[ap]m)/i);
+                                if (timeMatch) {
+                                    console.log('Found time on line after next:', timeMatch[1]);
+                                    pdtTime = parseTime(timeMatch[1]);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            if (pdtTime) {
+                console.log('PDT/Promised time successfully parsed:', formatTime(pdtTime));
+                result.timestamps.N = combineDateTime(baseDate, pdtTime, baseTime);
+                result.columns.N = result.timestamps.N ? formatTime(result.timestamps.N) : '';
+                console.log('N: PDT/Promised time final result:', result.columns.N);
+            } else {
+                console.log('No PDT or Promised delivery time found after all attempts');
+                result.columns.N = 'N/A';
+            }
+            result.formulas.push('N: PDT/Promised delivery time = ' + result.columns.N);
+            
+            // O: food_is_ready_at
+            const foodReadyMatch = text.match(/Food\s+is\s+ready\s+at\s*[:]?\s*(\d{1,2}:\d{2}\s*[apm]+)/i);
+            if (foodReadyMatch) {
+                console.log('Food ready match found:', foodReadyMatch[1]);
+                const foodReadyTime = parseTime(foodReadyMatch[1]);
+                if (foodReadyTime) {
+                    result.timestamps.O = combineDateTime(baseDate, foodReadyTime, baseTime);
+                    result.columns.O = result.timestamps.O ? formatTime(result.timestamps.O) : '';
+                }
+            } else {
+                // Try alternative pattern without "at"
+                const foodReadyAltMatch = text.match(/Food\s+ready\s*[:]?\s*(\d{1,2}:\d{2}\s*[apm]+)/i);
+                if (foodReadyAltMatch) {
+                    console.log('Food ready alternative match found:', foodReadyAltMatch[1]);
+                    const foodReadyTime = parseTime(foodReadyAltMatch[1]);
+                    if (foodReadyTime) {
+                        result.timestamps.O = combineDateTime(baseDate, foodReadyTime, baseTime);
+                        result.columns.O = result.timestamps.O ? formatTime(result.timestamps.O) : '';
+                    }
+                }
+            }
+            result.formulas.push('O: food_is_ready_at = ' + result.columns.O);
+            console.log('O: food_is_ready_at =', result.columns.O);
+            
+            // P: cancellation_time - UTC-BASED WITH COUNTRY OFFSETS
+            const nowUTC = new Date();
+            
+            const countryUTCOffsets = {
+                'AE': 4,  // UTC+4
+                'EG': 2,  // UTC+2
+                'KW': 3,  // UTC+3
+                'QA': 3,  // UTC+3
+                'IQ': 3,  // UTC+3
+                'SA': 3,  // UTC+3
+                'JO': 2,  // UTC+2
+                'BH': 3,  // UTC+3
+                'OM': 4   // UTC+4
+            };
+            
+            const countryCode = result.columns.C;
+            const targetOffset = countryUTCOffsets[countryCode] || 4; // Default to UAE (UTC+4)
+            
+            // Convert browser local time to UTC
+            const utcTime = nowUTC.getTime() + (nowUTC.getTimezoneOffset() * 60000);
+            // Apply country offset to get country local time
+            const countryTime = new Date(utcTime + (3600000 * targetOffset));
+            
+            result.columns.P = formatTime(countryTime);
+            result.timestamps.P = countryTime;
+            result.formulas.push(`P: cancellation_time = UTC + ${targetOffset} hours (Country: ${countryCode}) = ${result.columns.P}`);
+            console.log(`P: cancellation_time = ${result.columns.P} (UTC+${targetOffset} for country ${countryCode})`);
+            
+            // Q: old_cpt
+            const oldCptMatch = text.match(/Pickup\s*[-]\s*Committed\s*[:]?\s*(\d{1,2}:\d{2}[apm]+)/i);
+            if (oldCptMatch) {
+                console.log('Old CPT match found:', oldCptMatch[1]);
+                const oldCptTime = parseTime(oldCptMatch[1]);
+                if (oldCptTime) {
+                    result.timestamps.Q = combineDateTime(baseDate, oldCptTime, baseTime);
+                    result.columns.Q = result.timestamps.Q ? formatTime(result.timestamps.Q) : '';
+                }
+            }
+            result.formulas.push('Q: old_cpt = ' + result.columns.Q);
+            console.log('Q: old_cpt =', result.columns.Q);
+            
+            // R: cpt =IF(J2>Q2,J2,Q2)
+            if (result.timestamps.J && result.timestamps.Q) {
+                result.timestamps.R = result.timestamps.J > result.timestamps.Q ? result.timestamps.J : result.timestamps.Q;
+                result.columns.R = formatTime(result.timestamps.R);
+            } else if (result.timestamps.J) {
+                result.timestamps.R = result.timestamps.J;
+                result.columns.R = formatTime(result.timestamps.J);
+            } else if (result.timestamps.Q) {
+                result.timestamps.R = result.timestamps.Q;
+                result.columns.R = formatTime(result.timestamps.Q);
+            }
+            result.formulas.push('R: cpt = MAX(J, Q) = ' + result.columns.R);
+            
+            // S: is_wfa
+            result.columns.S = text.includes("Scheduled") ? "TRUE" : "FALSE";
+            result.formulas.push('S: is_wfa (Scheduled) = ' + result.columns.S);
+            
+            // T: Before PDT Check - MODIFIED VERSION
+            console.log('=== Calculating T: Before PDT Check (Modified) ===');
+            result.columns.T = "";
+            
+            // Get dropoff time for T check (M if available, otherwise P as fallback)
+            const dropoffTimeForT = result.timestamps.M || result.timestamps.P;
+            
+            if (dropoffTimeForT && result.timestamps.N) {
+                const pdtPlus10 = new Date(result.timestamps.N.getTime() + (10 * 60 * 1000));
+                console.log(`T Check: Dropoff time = ${formatTime(dropoffTimeForT)}, PDT = ${formatTime(result.timestamps.N)}, PDT+10min = ${formatTime(pdtPlus10)}`);
+                
+                if (dropoffTimeForT <= pdtPlus10) {
+                    result.columns.T = "Before PDT";
+                    console.log('T: Before PDT condition met');
+                    
+                    // Add note if using cancellation time
+                    if (!result.timestamps.M && result.timestamps.P) {
+                        result.formulas.push('T Note: Using cancellation_time for Before PDT check (Near Dropoff not available)');
+                    }
+                } else {
+                    console.log('T: Dropoff time is after PDT+10min');
+                }
+            } else {
+                console.log(`T: Cannot check - Dropoff time: ${dropoffTimeForT ? 'Available' : 'Missing'}, PDT: ${result.timestamps.N ? 'Available' : 'Missing'}`);
+            }
+            result.formulas.push('T: Before PDT Check = ' + result.columns.T);
+            
+            // Helper: Convert datetime difference to seconds
+            function datetimeToSeconds(date1, date2) {
+                if (!date1 || !date2) return 0;
+                return (date2 - date1) / 1000;
+            }
+            
+            // U: System Late Duration
+            let U_seconds = 0;
+            if (result.timestamps.H && result.timestamps.F) {
+                U_seconds = datetimeToSeconds(result.timestamps.F, result.timestamps.H);
+            } else if (result.columns.P && result.timestamps.F) {
+                const P_time = parseTime(result.columns.P);
+                if (P_time) {
+                    U_seconds = datetimeToSeconds(result.timestamps.F, P_time);
+                }
+            }
+            result.columns.U = Math.round(U_seconds) + "s";
+            result.formulas.push('U: System Late Duration = IF(H<>"", (H-F)*86400, IF(P<>"", (P-F)*86400, 0)) = ' + result.columns.U);
+            
+            // V: Vendor Late Duration
+            let V_seconds = 0;
+            if (result.timestamps.K && result.timestamps.R) {
+                V_seconds = datetimeToSeconds(result.timestamps.R, result.timestamps.K);
+            }
+            result.columns.V = Math.round(V_seconds) + "s";
+            result.formulas.push('V: Vendor Late Duration = ' + result.columns.V);
+            
+            // W: Rider Delay After Pickup - MODIFIED VERSION
+            console.log('=== Calculating W: Rider Delay After Pickup (Modified) ===');
+            let W_seconds = 0;
+            
+            // Get the dropoff time (use near dropoff first, cancellation time as fallback)
+            let dropoffTime = result.timestamps.M;
+            
+            // If near dropoff is not available, use cancellation time
+            if (!dropoffTime && result.columns.P && result.columns.P !== 'N/A') {
+                console.log('Near dropoff not available, using cancellation time as dropoff time');
+                dropoffTime = result.timestamps.P;
+                
+                // Add note about using cancellation time
+                result.formulas.push('W Note: Using cancellation_time as dropoff time (Near Dropoff not available)');
+            }
+            
+            // Calculate delay if we have both dropoff time and estimated dropoff
+            if (dropoffTime && result.timestamps.L && dropoffTime > result.timestamps.L) {
+                W_seconds = datetimeToSeconds(result.timestamps.L, dropoffTime);
+                console.log(`W calculated: Dropoff time (${formatTime(dropoffTime)}) - Est. Dropoff (${formatTime(result.timestamps.L)}) = ${W_seconds}s`);
+                
+                // Add specific note if using cancellation time
+                if (!result.timestamps.M && result.timestamps.P) {
+                    result.formulas.push(`W: Using cancellation_time (${result.columns.P}) instead of Near Dropoff (N/A)`);
+                }
+            } else if (dropoffTime && result.timestamps.L) {
+                console.log(`No delay: Dropoff time (${formatTime(dropoffTime)}) <= Est. Dropoff (${formatTime(result.timestamps.L)})`);
+            } else {
+                console.log(`Cannot calculate W: Dropoff time or Est. Dropoff missing`);
+            }
+            
+            result.columns.W = Math.round(W_seconds) + "s";
+            result.formulas.push('W: Rider Delay After Pickup = (Dropoff Time - Est. Dropoff) = ' + result.columns.W);
+            console.log('W: Rider Delay After Pickup final result =', result.columns.W);
+            
+            // X: Rider Delay Before Pickup
+            let X_seconds = 0;
+            if (result.timestamps.I && result.timestamps.J && result.timestamps.I > result.timestamps.J) {
+                X_seconds = datetimeToSeconds(result.timestamps.J, result.timestamps.I);
+            } else if (!result.columns.I && result.columns.P && result.timestamps.H) {
+                const P_time = parseTime(result.columns.P);
+                if (P_time) {
+                    X_seconds = datetimeToSeconds(result.timestamps.H, P_time);
+                    if (X_seconds < 0) {
+                        X_seconds = 0;
+                    }
+                }
+            }
+            result.columns.X = Math.round(X_seconds) + "s";
+            result.formulas.push('X: Rider Delay Before Pickup = IF(AND(I<>"" , I>J), (I-J)*86400, IF(I = "",(P-H)*86400,0)) = ' + result.columns.X);
+            
+            // Y: Vendor Late (Near Pickup vs Picked Up)
+            let Y_seconds = 0;
+            if (result.columns.S === "FALSE" && result.timestamps.I && result.timestamps.J && result.timestamps.K && result.timestamps.R) {
+                if (result.timestamps.I > result.timestamps.J && result.timestamps.K > result.timestamps.R) {
+                    if (result.timestamps.K && result.timestamps.I) {
+                        Y_seconds = datetimeToSeconds(result.timestamps.I, result.timestamps.K);
+                    }
+                }
+            }
+            result.columns.Y = Math.round(Y_seconds) + "s";
+            result.formulas.push('Y: Vendor Late (Near Pickup vs Picked Up) = ' + result.columns.Y);
+            
+            // Z: Late Owner - EXACT GOOGLE SHEETS FORMULA LOGIC
+            let Z_result = "";
+            
+            console.log("=== CALCULATING Z RESULT ===");
+            console.log("T (Before PDT):", result.columns.T);
+            console.log("M (Near Dropoff):", result.columns.M);
+            console.log("N (PDT):", result.columns.N);
+            console.log("I (Near Pickup):", result.columns.I);
+            console.log("J (Est Pickup):", result.columns.J);
+            console.log("K (Picked Up):", result.columns.K);
+            console.log("R (CPT):", result.columns.R);
+            console.log("S (Scheduled):", result.columns.S);
+            console.log("U (System Late):", U_seconds);
+            console.log("V (Vendor Late):", V_seconds);
+            console.log("W (Rider After Pickup):", W_seconds);
+            console.log("X (Rider Before Pickup):", X_seconds);
+            console.log("Y (Vendor Near Pickup):", Y_seconds);
+            
+            // Convert 600 seconds (10 minutes) to milliseconds
+            const tenMinutesMs = 600 * 1000;
+            
+            // Check if dropoff > N + 10 minutes
+            const dropoffAfterPdtPlus10 = dropoffTime && result.timestamps.N && 
+                                       (dropoffTime.getTime() > (result.timestamps.N.getTime() + tenMinutesMs));
+            
+            console.log("Dropoff > N + 10min?", dropoffAfterPdtPlus10);
+            
+            // Condition 1: Before PDT
+            if (result.columns.T === "Before PDT") {
+                Z_result = "Before PDT";
+                console.log("Condition 1: Before PDT");
+            }
+            // Condition 2: Scheduled and vendor late
+            else if (dropoffAfterPdtPlus10 && result.columns.S === "TRUE") {
+                const foodOrCancelTime = result.timestamps.O || (result.columns.P ? new Date(baseDate.getTime() + parseTime(result.columns.P).getTime()) : null);
+                if (foodOrCancelTime && foodOrCancelTime > result.timestamps.N) {
+                    Z_result = "Vendor Late";
+                    console.log("Condition 2: Scheduled and vendor late");
+                }
+            }
+            // Condition 3: Vendor late (non-scheduled, I <= J, K > R, V > U, V > (X+W))
+            else if (dropoffAfterPdtPlus10 && result.columns.S !== "TRUE" && 
+                    result.timestamps.I && result.timestamps.J && result.timestamps.K && result.timestamps.R &&
+                    result.timestamps.I <= result.timestamps.J && result.timestamps.K > result.timestamps.R &&
+                    V_seconds > U_seconds && V_seconds > (X_seconds + W_seconds)) {
+                Z_result = "Vendor Late";
+                console.log("Condition 3: Vendor late (non-scheduled)");
+            }
+            // Condition 4: Rider late ((X+W) > U, (X+W) > V, (X+W) > Y)
+            else if (dropoffAfterPdtPlus10 && (X_seconds + W_seconds) > U_seconds && 
+                    (X_seconds + W_seconds) > V_seconds && (X_seconds + W_seconds) > Y_seconds) {
+                Z_result = "Rider Late";
+                console.log("Condition 4: Rider late");
+            }
+            // Condition 5: Long dispatch (U >= (X+W), U > V, U > Y)
+            else if (dropoffAfterPdtPlus10 && U_seconds >= (X_seconds + W_seconds) && 
+                    U_seconds > V_seconds && U_seconds > Y_seconds) {
+                Z_result = "Long Dispatch";
+                console.log("Condition 5: Long dispatch");
+            }
+            // Condition 6: Vendor late (I > J, K > R, non-scheduled)
+            else if (dropoffAfterPdtPlus10 && result.columns.S !== "TRUE" && 
+                    result.timestamps.I && result.timestamps.J && result.timestamps.K && result.timestamps.R &&
+                    result.timestamps.I > result.timestamps.J && result.timestamps.K > result.timestamps.R &&
+                    ((Y_seconds > U_seconds && Y_seconds > (X_seconds + W_seconds)) || 
+                     (V_seconds > U_seconds && V_seconds > (X_seconds + W_seconds)))) {
+                Z_result = "Vendor Late";
+                console.log("Condition 6: Vendor late (I > J, K > R)");
+            }
+            // Default
+            else {
+                Z_result = "";
+                console.log("Default: No condition met");
+            }
+            
+            // If still empty, set to "On Time"
+            if (!Z_result) {
+                Z_result = "On Time";
+            }
+            
+            result.columns.Z = Z_result;
+            
+            return result;
+        }
+        
+        function updateResultDisplay(result) {
+            const finalResult = document.getElementById('finalResult');
+            const columnsGrid = document.getElementById('columnsGrid');
+            const formulaSteps = document.getElementById('formulaSteps');
+            
+            // Set final result with appropriate styling
+            finalResult.textContent = result.columns.Z || 'No Result';
+            finalResult.className = 'final-result ';
+            
+            if (result.columns.Z === "Before PDT") {
+                finalResult.classList.add('result-before-pdt');
+            } else if (result.columns.Z.includes("Vendor Late")) {
+                finalResult.classList.add('result-vendor-late');
+            } else if (result.columns.Z.includes("Rider Late")) {
+                finalResult.classList.add('result-rider-late');
+            } else if (result.columns.Z.includes("Long Dispatch")) {
+                finalResult.classList.add('result-long-dispatch');
+            } else if (result.columns.Z !== "Before PDT") {
+                // Get the numeric values for U, X, V (remove 's' and parse)
+                const U_value = parseFloat(result.columns.U.replace('s', '') || 0);
+                const X_value = parseFloat(result.columns.X.replace('s', '') || 0);
+                const V_value = parseFloat(result.columns.V.replace('s', '') || 0);
+                
+                // Find the maximum value
+                const maxValue = Math.max(U_value, X_value, V_value);
+                
+                // Determine which one is the max (with priority U > X > V)
+                if (U_value === maxValue) {
+                    finalResult.classList.add('result-long-dispatch');
+                    if (result.columns.Z !== "Long Dispatch") {
+                        finalResult.textContent = "Long Dispatch";
+                    }
+                } else if (X_value === maxValue) {
+                    finalResult.classList.add('result-rider-late');
+                    if (result.columns.Z !== "Rider Late") {
+                        finalResult.textContent = "Rider Late";
+                    }
+                } else if (V_value === maxValue) {
+                    finalResult.classList.add('result-vendor-late');
+                    if (result.columns.Z !== "Vendor Late") {
+                        finalResult.textContent = "Vendor Late";
+                    }
+                } else {
+                    finalResult.classList.add('result-on-time');
+                }
+            } else {
+                finalResult.classList.add('result-on-time');
+            }
+            
+            // Create columns grid
+            let columnsHTML = '';
+            
+            // Group columns logically
+            const columnGroups = [
+                {
+                    title: 'Basic Information',
+                    columns: [
+                        { label: 'B: Order ID', value: result.columns.B },
+                        { label: 'C: Country', value: result.columns.C },
+                        { label: 'D: Order Date', value: result.columns.D },
+                        { label: 'E: Ordered at', value: result.columns.E, isTime: true }
+                    ]
+                },
+                {
+                    title: 'Timeline Events',
+                    columns: [
+                        { label: 'F: Queued At', value: result.columns.F, isTime: true },
+                        { label: 'G: Courier Notified', value: result.columns.G, isTime: true },
+                        { label: 'H: Accepted At', value: result.columns.H, isTime: true },
+                        { label: 'I: Near Pickup', value: result.columns.I, isTime: true },
+                        { label: 'K: Picked Up At', value: result.columns.K, isTime: true },
+                        { 
+                            label: 'M: Near Dropoff', 
+                            value: result.columns.M, 
+                            isTime: true,
+                            note: result.timestamps.P && !result.timestamps.M ? '(Using cancellation time for calculations)' : ''
+                        }
+                    ]
+                },
+                {
+                    title: 'Time Estimates',
+                    columns: [
+                        { label: 'J: Est. Pickup (CPT)', value: result.columns.J, isTime: true },
+                        { label: 'L: Est. Dropoff', value: result.columns.L, isTime: true },
+                        { label: 'N: PDT', value: result.columns.N, isTime: true },
+                        { label: 'Q: old_cpt', value: result.columns.Q, isTime: true },
+                        { label: 'R: cpt', value: result.columns.R, isTime: true },
+                        { label: 'O: food_is_ready_at', value: result.columns.O, isTime: true }
+                    ]
+                },
+                {
+                    title: 'Calculations',
+                    columns: [
+                        { 
+                            label: 'P: cancellation_time', 
+                            value: result.columns.P, 
+                            isTime: true,
+                            note: `(UTC+${getUTCOffsetForCountry(result.columns.C)} for ${result.columns.C})` 
+                        },
+                        { label: 'S: is_wfa', value: result.columns.S, isBoolean: true },
+                        { 
+                            label: 'T: Before PDT Check', 
+                            value: result.columns.T,
+                            note: !result.columns.M && result.columns.P && result.columns.T === "Before PDT" ? '(Uses cancellation time)' : ''
+                        },
+                        { label: 'U: System Late Duration', value: result.columns.U, isSeconds: true },
+                        { label: 'V: Vendor Late Duration', value: result.columns.V, isSeconds: true },
+                        { 
+                            label: 'W: Rider Delay After Pickup', 
+                            value: result.columns.W, 
+                            isSeconds: true,
+                            note: !result.columns.M && result.columns.P ? '(Uses cancellation time)' : ''
+                        },
+                        { label: 'X: Rider Delay Before Pickup', value: result.columns.X, isSeconds: true },
+                        { label: 'Y: Vendor Late (Near Pickup)', value: result.columns.Y, isSeconds: true }
+                    ]
+                }
+            ];
+            
+            columnGroups.forEach(group => {
+                let groupHTML = `<div class="column-group">
+                    <h3>${group.title}</h3>`;
+                
+                group.columns.forEach(col => {
+                    let valueClass = '';
+                    let noteHTML = '';
+                    if (col.isTime) valueClass = 'time-value';
+                    if (col.isSeconds) valueClass = 'seconds-value';
+                    if (col.isBoolean) valueClass = col.value === 'TRUE' ? 'boolean-true' : 'boolean-false';
+                    if (col.note) noteHTML = `<div class="column-note">${col.note}</div>`;
+                    
+                    groupHTML += `
+                        <div class="column-item">
+                            <div class="column-label">${col.label}</div>
+                            <div class="column-value ${valueClass}">${col.value || 'N/A'}</div>
+                            ${noteHTML}
+                        </div>
+                    `;
+                });
+                
+                groupHTML += '</div>';
+                columnsHTML += groupHTML;
+            });
+            
+            columnsGrid.innerHTML = columnsHTML;
+            
+            // Show formula steps
+            let formulaHTML = '';
+            if (result.formulas && result.formulas.length > 0) {
+                result.formulas.forEach(formula => {
+                    formulaHTML += `<div class="formula-step">${formula}</div>`;
+                });
+            }
+            formulaSteps.innerHTML = formulaHTML;
+        }
+        
+        // Helper function to get UTC offset for a country
+        function getUTCOffsetForCountry(countryCode) {
+            const countryUTCOffsets = {
+                'AE': 4,
+                'EG': 2,
+                'KW': 3,
+                'QA': 3,
+                'IQ': 3,
+                'SA': 3,
+                'JO': 2,
+                'BH': 3,
+                'OM': 4
+            };
+            return countryUTCOffsets[countryCode] || 4;
+        }
+        
+        function updateDebugInfo(result) {
+            const debugInfo = document.getElementById('debugInfo');
+            let debugHTML = 'EXTRACTED DATA:\n\n';
+            
+            debugHTML += 'Columns B-Z:\n';
+            Object.entries(result.columns).forEach(([key, value]) => {
+                debugHTML += `${key}: ${value}\n`;
+            });
+            
+            debugHTML += '\nTimestamps (Date Objects):\n';
+            Object.entries(result.timestamps).forEach(([key, value]) => {
+                debugHTML += `${key}: ${value ? value.toString() : 'null'}\n`;
+            });
+            
+            // Add current time info
+            const now = new Date();
+            debugHTML += '\nCurrent Time Info:\n';
+            debugHTML += `Browser Local: ${now.toString()}\n`;
+            debugHTML += `Browser UTC Offset: ${-now.getTimezoneOffset()/60} hours\n`;
+            debugHTML += `Country: ${result.columns.C}\n`;
+            debugHTML += `Country UTC Offset: UTC+${getUTCOffsetForCountry(result.columns.C)}\n`;
+            
+            // Add W calculation details
+            debugHTML += '\nW & T Calculation Details:\n';
+            debugHTML += `Near Dropoff (M): ${result.columns.M}\n`;
+            debugHTML += `Using cancellation time for W: ${!result.columns.M && result.columns.P ? 'Yes' : 'No'}\n`;
+            debugHTML += `Using cancellation time for T: ${!result.columns.M && result.columns.P && result.columns.T === "Before PDT" ? 'Yes' : 'No'}\n`;
+            
+            // Helper function to format time for debug display
+            function formatDebugTime(date) {
+                if (!date) return 'N/A';
+                return date.toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            }
+            
+            debugHTML += `Final dropoff time used for calculations: ${result.timestamps.M ? formatDebugTime(result.timestamps.M) : (result.timestamps.P ? formatDebugTime(result.timestamps.P) : 'N/A')}\n`;
+            
+            debugInfo.textContent = debugHTML;
+        }
+        
+        // Load the problematic data for testing
+        window.addEventListener('load', function() {
+            document.getElementById('orderDetails').value = `Hurrier
+Search by
+
+
+3376405101
+Backend Link
+Important Details
+Status
+In progress
+(Since 01 Jan 11:09pm)
+Platform
+talabat
+Global Entity ID
+HF_EG
+Vendor code
+509562
+Vendor Order no.
+3784
+Order Value
+$297.49
+Manhattan distance
+6.33 KM
+Prep duration (TES)
+10m
+Courier delay
+14m
+More Details
+Pick up and Drop off
+Vendor Address
+House of Cocoa, Elsherouk
+17 Cleopatra Street, Korba, Heliopolis , Cairo
+Cairo
+Apartment
+NA
+Zipcode
+NA
+Building
+NA
+Intercom
+NA
+Floor
+NA
+Entrance
+NA
+Elsherouk
+Customer Address
+Lara Lolita
++201554595895
+Tariaq Bedon Esm Townhouse 69 Parcel 8 , القاهرة
+القاهرة
+Apartment
+NA
+Zipcode
+NA
+Building
+NA
+Intercom
+NA
+Floor
+NA
+Entrance
+NA
+Deadline -6 minutes 
+Deliveries
+1
+Issues
+Routes
+Order Items
+
+ID
+132583660508389376
+Status
+Accepted
+Zones
+Shorouk city sp 1, Shorouk city sp 2
+Courier
+Utilization
+29
+Time	Event	Courier	Loc	Est.accept time	Est.pickup arrival	Est.pickup departure	Est.dropoff arrival	Est.dropoff departure	
+10:40 PM	
+Queued
+-		-	-	
+-
+-	
+-
+10:40 PM	
+Dispatched
+Auto Dispatching
+10:40 PM	10:49 PM	
+10:52 PM
+(18min)
+11:15 PM	
+11:15 PM
+(0min)
+10:40 PM	
+Courier Notified
+-	10:49 PM	
+10:52 PM
+(18min)
+11:15 PM	
+11:15 PM
+(0min)
+10:40 PM	
+Accepted
+-	10:49 PM	
+10:52 PM
+(18min)
+11:15 PM	
+11:15 PM
+(0min)
+10:49 PM	
+Near Pickup
+-	11:01 PM	
+11:02 PM
+(8min)
+11:25 PM	
+11:25 PM
+(-10min)
+11:09 PM	
+Queued
+Manual Undispatch
+-	-	
+-
+-	
+-
+11:09 PM	
+Dispatched
+Auto Dispatching
+11:09 PM	11:17 PM	
+11:18 PM
+(-7min)
+11:41 PM	
+11:41 PM
+(-26min)
+11:09 PM	
+Courier Notified
+-	11:17 PM	
+11:18 PM
+(-7min)
+11:41 PM	
+11:41 PM
+(-26min)
+11:09 PM	
+Accepted
+-	11:17 PM	
+11:18 PM
+(-7min)
+11:41 PM	
+11:41 PM
+(-26min)
+Notes
+Empty state
+Time Checks
+Ordered at
+Thu 01 Jan 10:40pm
+Send to restaurant
+10:40pm
+Restaurant confirmed at
+10:40pm
+Pickup - Committed
+10:50pm
+Food is ready at
+11:01pm
+Promised delivery time
+Thu 01 Jan 11:15pm`;
         });
-}
-
-// Update debugExport function to include direct test button
-function debugExport() {
-    const debugOutput = document.getElementById('debugOutput');
-    const apiStatus = document.getElementById('apiStatus');
-    
-    if (!currentResults || Object.keys(currentResults).length === 0) {
-        showApiStatus('Please analyze an order first', 'error');
-        return;
-    }
-    
-    // Prepare data
-    const debugData = {
-        B: currentResults.B || '12345',
-        C: currentResults.C || 'AE',
-        Z: currentResults.Z || 'Vendor Late',
-        timestamp: new Date().toISOString()
-    };
-    
-    const params = new URLSearchParams();
-    Object.keys(debugData).forEach(key => {
-        params.append(key, debugData[key]);
-    });
-    
-    const url = DEPLOYMENT_URL + '?' + params.toString();
-    
-    debugOutput.innerHTML = `🔍 DEBUG INFO:
-    
-📤 Data being sent:
-${JSON.stringify(debugData, null, 2)}
-
-🔗 URL being called:
-${url}
-
-📋 TEST OPTIONS:
-1. <button onclick="window.open('${url}', '_blank')" style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 5px;">📤 Open Test Link</button>
-2. <button onclick="directTest()" style="background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 5px;">🧪 Run Direct Test</button>
-
-🛠️ TROUBLESHOOTING:
-1. Click "Open Test Link" - a new tab should open with JSON response
-2. Check Google Apps Script → Executions for logs
-3. Check Google Sheets for "Test Results" sheet
-4. Ensure script is deployed with "Anyone" access
-5. Check browser console (F12) for CORS errors`;
-
-    debugOutput.style.display = 'block';
-    showApiStatus('Debug info ready. Click the test buttons above.', 'info');
-}
+    </script>
+</body>
+</html>
