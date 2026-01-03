@@ -80,6 +80,29 @@
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
         
+        /* Added checkbox styling */
+        .checkbox-container {
+            margin-top: 15px;
+            padding: 10px 0;
+            display: flex;
+            align-items: center;
+        }
+        
+        .checkbox-container input[type="checkbox"] {
+            margin-right: 10px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .checkbox-container label {
+            display: inline;
+            margin: 0;
+            font-weight: 500;
+            cursor: pointer;
+            color: #333;
+        }
+        
         .button-container {
             text-align: center;
             margin: 30px 0;
@@ -357,6 +380,12 @@
             <div class="input-section">
                 <label for="orderDetails">📋 Paste Order Details (Column A content):</label>
                 <textarea id="orderDetails" placeholder="Paste the complete order details here..."></textarea>
+                
+                <!-- Added checkbox -->
+                <div class="checkbox-container">
+                    <input type="checkbox" id="localShopAE">
+                    <label for="localShopAE">Local Shop AE (Adds 30 minutes to PDT instead of 10 minutes - ONLY if Country is AE)</label>
+                </div>
             </div>
             
             <div class="error" id="errorMessage"></div>
@@ -411,6 +440,9 @@
             const resultContainer = document.getElementById('resultContainer');
             const analyzeBtn = document.getElementById('analyzeBtn');
             
+            // Get checkbox state
+            const isLocalShopAE = document.getElementById('localShopAE').checked;
+            
             // Reset UI
             errorDiv.style.display = 'none';
             resultContainer.style.display = 'none';
@@ -431,7 +463,7 @@
             // Process the details
             setTimeout(() => {
                 try {
-                    const result = processOrderDetails(details);
+                    const result = processOrderDetails(details, isLocalShopAE);
                     debugData = result;
                     
                     // Update result display
@@ -456,7 +488,7 @@
             }, 500);
         }
         
-        function processOrderDetails(text) {
+        function processOrderDetails(text, isLocalShopAE) {
             const result = {
                 columns: {},
                 timestamps: {},
@@ -644,11 +676,15 @@
             result.formulas.push('B: Order ID = ' + result.columns.B);
             console.log('B: Order ID =', result.columns.B);
             
-            // C: Country - UPDATED to handle both TB_ and HF_ prefixes
+            // C: Country - UPDATED to handle multiple patterns
             let countryMatch = text.match(/TB_([A-Z]{2})/i);
             if (!countryMatch) {
                 // Try HF_ pattern if TB_ not found
                 countryMatch = text.match(/HF_([A-Z]{2})/i);
+            }
+            if (!countryMatch) {
+                // Try ODR_ pattern as fallback
+                countryMatch = text.match(/ODR_([A-Z]{2})/i);
             }
             result.columns.C = countryMatch ? countryMatch[1].trim() : '';
             result.formulas.push('C: Country = ' + result.columns.C);
@@ -1195,12 +1231,27 @@
                 console.log('PDT/Promised time successfully parsed:', formatTime(pdtTime));
                 result.timestamps.N = combineDateTime(baseDate, pdtTime, baseTime);
                 result.columns.N = result.timestamps.N ? formatTime(result.timestamps.N) : '';
-                console.log('N: PDT/Promised time final result:', result.columns.N);
+                
+                // Check if we should apply Local Shop AE logic
+                const country = result.columns.C;
+                const applyLocalShopAE = isLocalShopAE && country === 'AE';
+                const minutesToAdd = applyLocalShopAE ? 30 : 10;
+                
+                // Add note about the Local Shop AE adjustment
+                if (applyLocalShopAE) {
+                    result.formulas.push(`N: PDT/Promised time = ${result.columns.N} (Local Shop AE: Using 30 minutes for calculations)`);
+                } else if (isLocalShopAE && country !== 'AE') {
+                    result.formulas.push(`N: PDT/Promised time = ${result.columns.N} (Checkbox checked but Country is ${country}, not AE: Using 10 minutes)`);
+                } else {
+                    result.formulas.push(`N: PDT/Promised time = ${result.columns.N} (Using 10 minutes for calculations)`);
+                }
+                
+                console.log('N: PDT/Promised time final result:', result.columns.N, `(+${minutesToAdd}min)`);
             } else {
                 console.log('No PDT or Promised delivery time found after all attempts');
                 result.columns.N = 'N/A';
+                result.formulas.push('N: PDT/Promised delivery time = N/A');
             }
-            result.formulas.push('N: PDT/Promised delivery time = ' + result.columns.N);
             
             // O: food_is_ready_at
             const foodReadyMatch = text.match(/Food\s+is\s+ready\s+at\s*[:]?\s*(\d{1,2}:\d{2}\s*[apm]+)/i);
@@ -1292,19 +1343,30 @@
             const dropoffTimeForT = result.timestamps.M || result.timestamps.P;
             
             if (dropoffTimeForT && result.timestamps.N) {
-                const pdtPlus10 = new Date(result.timestamps.N.getTime() + (10 * 60 * 1000));
-                console.log(`T Check: Dropoff time = ${formatTime(dropoffTimeForT)}, PDT = ${formatTime(result.timestamps.N)}, PDT+10min = ${formatTime(pdtPlus10)}`);
+                // MODIFIED: Use 30 minutes if Local Shop AE checkbox is checked AND country is AE, otherwise 10 minutes
+                const country = result.columns.C;
+                const applyLocalShopAE = isLocalShopAE && country === 'AE';
+                const minutesToAdd = applyLocalShopAE ? 30 : 10;
+                const pdtPlusMinutes = new Date(result.timestamps.N.getTime() + (minutesToAdd * 60 * 1000));
+                console.log(`T Check: Dropoff time = ${formatTime(dropoffTimeForT)}, PDT = ${formatTime(result.timestamps.N)}, PDT+${minutesToAdd}min = ${formatTime(pdtPlusMinutes)}`);
                 
-                if (dropoffTimeForT <= pdtPlus10) {
+                if (dropoffTimeForT <= pdtPlusMinutes) {
                     result.columns.T = "Before PDT";
-                    console.log('T: Before PDT condition met');
+                    console.log(`T: Before PDT condition met (PDT + ${minutesToAdd}min)`);
                     
                     // Add note if using cancellation time
                     if (!result.timestamps.M && result.timestamps.P) {
                         result.formulas.push('T Note: Using cancellation_time for Before PDT check (Near Dropoff not available)');
                     }
+                    
+                    // Add note about buffer
+                    if (applyLocalShopAE) {
+                        result.formulas.push(`T: Using 30-minute buffer (Local Shop AE + Country AE)`);
+                    } else if (isLocalShopAE && country !== 'AE') {
+                        result.formulas.push(`T: Checkbox checked but Country is ${country}, not AE - Using 10-minute buffer`);
+                    }
                 } else {
-                    console.log('T: Dropoff time is after PDT+10min');
+                    console.log(`T: Dropoff time is after PDT+${minutesToAdd}min`);
                 }
             } else {
                 console.log(`T: Cannot check - Dropoff time: ${dropoffTimeForT ? 'Available' : 'Missing'}, PDT: ${result.timestamps.N ? 'Available' : 'Missing'}`);
@@ -1425,15 +1487,22 @@
             console.log("X (Rider Before Pickup):", X_seconds);
             console.log("Y (Vendor Near Pickup):", Y_seconds);
             
-            // Convert 600 seconds (10 minutes) to milliseconds
-            const tenMinutesMs = 600 * 1000;
+            // Check if we should apply Local Shop AE logic
+            const country = result.columns.C;
+            const applyLocalShopAE = isLocalShopAE && country === 'AE';
             
-            // Check if dropoff > N + 10 minutes
+            // Convert to milliseconds based on checkbox AND country
+            const minutesToAdd = applyLocalShopAE ? 30 : 10;
+            const pdtBufferMs = minutesToAdd * 60 * 1000;
+            
+            console.log(`Using ${minutesToAdd} minutes buffer for PDT (Local Shop AE: ${isLocalShopAE}, Country: ${country}, Apply: ${applyLocalShopAE})`);
+            
+            // Check if dropoff > N + minutes (10 or 30 based on checkbox AND country)
             // Use dropoffTime (which could be M or P) instead of just M
-            const dropoffAfterPdtPlus10 = dropoffTime && result.timestamps.N && 
-                                       (dropoffTime.getTime() > (result.timestamps.N.getTime() + tenMinutesMs));
+            const dropoffAfterPdtPlusBuffer = dropoffTime && result.timestamps.N && 
+                                       (dropoffTime.getTime() > (result.timestamps.N.getTime() + pdtBufferMs));
             
-            console.log("Dropoff > N + 10min?", dropoffAfterPdtPlus10);
+            console.log(`Dropoff > N + ${minutesToAdd}min?`, dropoffAfterPdtPlusBuffer);
             
             // Condition 1: Before PDT
             if (result.columns.T === "Before PDT") {
@@ -1441,7 +1510,7 @@
                 console.log("Condition 1: Before PDT");
             }
             // Condition 2: Scheduled and vendor late
-            else if (dropoffAfterPdtPlus10 && result.columns.S === "TRUE") {
+            else if (dropoffAfterPdtPlusBuffer && result.columns.S === "TRUE") {
                 const foodOrCancelTime = result.timestamps.O || (result.columns.P ? new Date(baseDate.getTime() + parseTime(result.columns.P).getTime()) : null);
                 if (foodOrCancelTime && foodOrCancelTime > result.timestamps.N) {
                     Z_result = "Vendor Late";
@@ -1449,7 +1518,7 @@
                 }
             }
             // Condition 3: Vendor late (non-scheduled, I <= J, K > R, V > U, V > (X+W))
-            else if (dropoffAfterPdtPlus10 && result.columns.S !== "TRUE" && 
+            else if (dropoffAfterPdtPlusBuffer && result.columns.S !== "TRUE" && 
                     result.timestamps.I && result.timestamps.J && result.timestamps.K && result.timestamps.R &&
                     result.timestamps.I <= result.timestamps.J && result.timestamps.K > result.timestamps.R &&
                     V_seconds > U_seconds && V_seconds > (X_seconds + W_seconds)) {
@@ -1457,19 +1526,19 @@
                 console.log("Condition 3: Vendor late (non-scheduled)");
             }
             // Condition 4: Rider late ((X+W) > U, (X+W) > V, (X+W) > Y)
-            else if (dropoffAfterPdtPlus10 && (X_seconds + W_seconds) > U_seconds && 
+            else if (dropoffAfterPdtPlusBuffer && (X_seconds + W_seconds) > U_seconds && 
                     (X_seconds + W_seconds) > V_seconds && (X_seconds + W_seconds) > Y_seconds) {
                 Z_result = "Rider Late";
                 console.log("Condition 4: Rider late");
             }
             // Condition 5: Long dispatch (U >= (X+W), U > V, U > Y)
-            else if (dropoffAfterPdtPlus10 && U_seconds >= (X_seconds + W_seconds) && 
+            else if (dropoffAfterPdtPlusBuffer && U_seconds >= (X_seconds + W_seconds) && 
                     U_seconds > V_seconds && U_seconds > Y_seconds) {
                 Z_result = "Long Dispatch";
                 console.log("Condition 5: Long dispatch");
             }
             // Condition 6: Vendor late (I > J, K > R, non-scheduled)
-            else if (dropoffAfterPdtPlus10 && result.columns.S !== "TRUE" && 
+            else if (dropoffAfterPdtPlusBuffer && result.columns.S !== "TRUE" && 
                     result.timestamps.I && result.timestamps.J && result.timestamps.K && result.timestamps.R &&
                     result.timestamps.I > result.timestamps.J && result.timestamps.K > result.timestamps.R &&
                     ((Y_seconds > U_seconds && Y_seconds > (X_seconds + W_seconds)) || 
@@ -1489,6 +1558,20 @@
             }
             
             result.columns.Z = Z_result;
+            
+            // Add note about buffer used
+            if (applyLocalShopAE) {
+                result.formulas.push(`Z: Late Owner = ${Z_result} (using 30-minute buffer - Local Shop AE + Country AE)`);
+            } else if (isLocalShopAE && country !== 'AE') {
+                result.formulas.push(`Z: Late Owner = ${Z_result} (checkbox checked but Country is ${country}, not AE - using 10-minute buffer)`);
+            } else {
+                result.formulas.push(`Z: Late Owner = ${Z_result} (using 10-minute buffer)`);
+            }
+            
+            // Store whether Local Shop AE was applied
+            result.applyLocalShopAE = applyLocalShopAE;
+            result.isLocalShopAEChecked = isLocalShopAE;
+            result.country = country;
             
             return result;
         }
@@ -1546,6 +1629,11 @@
             // Create columns grid
             let columnsHTML = '';
             
+            // Get buffer information
+            const isLocalShopAE = document.getElementById('localShopAE').checked;
+            const country = result.columns.C;
+            const applyLocalShopAE = isLocalShopAE && country === 'AE';
+            
             // Group columns logically
             const columnGroups = [
                 {
@@ -1578,7 +1666,16 @@
                     columns: [
                         { label: 'J: Est. Pickup (CPT)', value: result.columns.J, isTime: true },
                         { label: 'L: Est. Dropoff', value: result.columns.L, isTime: true },
-                        { label: 'N: PDT', value: result.columns.N, isTime: true },
+                        { 
+                            label: 'N: PDT', 
+                            value: result.columns.N, 
+                            isTime: true,
+                            note: applyLocalShopAE ? 
+                                  '(Local Shop AE + Country AE: Using 30 min buffer)' : 
+                                  (isLocalShopAE && country !== 'AE' ?
+                                   `(Checkbox checked but Country is ${country}: Using 10 min buffer)` :
+                                   '(Using 10 min buffer)')
+                        },
                         { label: 'Q: old_cpt', value: result.columns.Q, isTime: true },
                         { label: 'R: cpt', value: result.columns.R, isTime: true },
                         { label: 'O: food_is_ready_at', value: result.columns.O, isTime: true }
@@ -1597,7 +1694,13 @@
                         { 
                             label: 'T: Before PDT Check', 
                             value: result.columns.T,
-                            note: !result.columns.M && result.columns.P && result.columns.T === "Before PDT" ? '(Uses cancellation time)' : ''
+                            note: !result.columns.M && result.columns.P && result.columns.T === "Before PDT" ? 
+                                  '(Uses cancellation time)' : 
+                                  (applyLocalShopAE ? 
+                                   '(30 min buffer - Local Shop AE + Country AE)' : 
+                                   (isLocalShopAE && country !== 'AE' ?
+                                    `(Checkbox checked but Country is ${country}: 10 min buffer)` :
+                                    '(10 min buffer)'))
                         },
                         { label: 'U: System Late Duration', value: result.columns.U, isSeconds: true },
                         { label: 'V: Vendor Late Duration', value: result.columns.V, isSeconds: true },
@@ -1688,6 +1791,18 @@
             debugHTML += `Country: ${result.columns.C}\n`;
             debugHTML += `Country UTC Offset: UTC+${getUTCOffsetForCountry(result.columns.C)}\n`;
             
+            // Add checkbox and country info
+            const isLocalShopAE = document.getElementById('localShopAE').checked;
+            const country = result.columns.C;
+            const applyLocalShopAE = isLocalShopAE && country === 'AE';
+            
+            debugHTML += `\nLocal Shop AE Checkbox: ${isLocalShopAE ? 'Checked' : 'Not Checked'}\n`;
+            debugHTML += `Country: ${country}\n`;
+            debugHTML += `Apply Local Shop AE buffer: ${applyLocalShopAE ? 'Yes (30 min) - Checkbox checked AND Country is AE' : 'No (10 min)'}\n`;
+            if (isLocalShopAE && country !== 'AE') {
+                debugHTML += `Note: Checkbox checked but Country is ${country}, not AE - Using 10-minute buffer\n`;
+            }
+            
             // Add W calculation details - FIXED: Don't use formatTime function
             debugHTML += '\nW & T Calculation Details:\n';
             debugHTML += `Near Dropoff (M): ${result.columns.M}\n`;
@@ -1701,6 +1816,7 @@
             }
             
             debugHTML += `Final dropoff time used for calculations: ${result.timestamps.M ? formatDebugTime(result.timestamps.M) : (result.timestamps.P ? formatDebugTime(result.timestamps.P) : 'N/A')}\n`;
+            debugHTML += `PDT buffer used: ${applyLocalShopAE ? '30 minutes (Local Shop AE + Country AE)' : '10 minutes'}\n`;
             
             debugInfo.textContent = debugHTML;
         }
