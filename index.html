@@ -1569,53 +1569,58 @@
             }
             result.formulas.push('M: Near Dropoff = ' + result.columns.M);
             
-            // N: PDT - FIXED MULTILINE VERSION
+            // N: PDT - MODIFIED TO GET LAST PDT IN THE PATTERN
             console.log('=== Searching for N: PDT ===');
-            
-            // Method 1: Use [\s\S]*? to match across multiple lines
-            const pdtRegex1 = /PDT[\s\S]*?(\d{1,2}:\d{2}\s*[ap]m)/i;
-            const pdtMatch1 = text.match(pdtRegex1);
-            
+
+            // Method 1: Find ALL PDT matches and take the last one
+            const pdtMatches = [...text.matchAll(/PDT[\s\S]*?(\d{1,2}:\d{2}\s*[ap]m)/gi)];
+
             let pdtTime = null;
-            if (pdtMatch1) {
-                console.log('PDT regex 1 matched:', pdtMatch1[1]);
-                console.log('Full match (first 100 chars):', pdtMatch1[0].substring(0, 100));
-                pdtTime = parseTime(pdtMatch1[1]);
+            if (pdtMatches.length > 0) {
+                // Get the LAST match (most recent PDT)
+                const lastPdtMatch = pdtMatches[pdtMatches.length - 1];
+                console.log(`Found ${pdtMatches.length} PDT matches. Using last one:`, lastPdtMatch[1]);
+                console.log('Full last match (first 100 chars):', lastPdtMatch[0].substring(0, 100));
+                pdtTime = parseTime(lastPdtMatch[1]);
             }
-            
-            // Method 2: If first method fails, try a more specific pattern
+
+            // Method 2: If no PDT found, search for "Promised delivery time" and get the last one
             if (!pdtTime) {
-                console.log('PDT regex 1 failed, trying method 2...');
-                // Look for PDT, then optional whitespace/newlines, then date, then time
-                const pdtRegex2 = /PDT\s*\n?\s*[^\n]*?\s*(\d{1,2}:\d{2}\s*[ap]m)/i;
-                const pdtMatch2 = text.match(pdtRegex2);
-                if (pdtMatch2) {
-                    console.log('PDT regex 2 matched:', pdtMatch2[1]);
-                    pdtTime = parseTime(pdtMatch2[1]);
+                console.log('No PDT found, searching for "Promised delivery time"...');
+                
+                // Find ALL Promised delivery time matches
+                const promisedMatches = [...text.matchAll(/Promised\s+delivery\s+time[\s\S]*?(\d{1,2}:\d{2}\s*[ap]m)/gi)];
+                
+                if (promisedMatches.length > 0) {
+                    // Get the LAST match
+                    const lastPromisedMatch = promisedMatches[promisedMatches.length - 1];
+                    console.log(`Found ${promisedMatches.length} Promised delivery time matches. Using last one:`, lastPromisedMatch[1]);
+                    pdtTime = parseTime(lastPromisedMatch[1]);
                 }
             }
-            
-            // Method 3: Manual search through lines
+
+            // Method 3: If still not found, try line-by-line search (as before)
             if (!pdtTime) {
-                console.log('PDT regex 2 failed, trying method 3 (line search)...');
+                console.log('Regex search failed, trying method 3 (line search)...');
                 const lines = text.split('\n');
+                let foundPdtTimes = [];
+                
                 for (let i = 0; i < lines.length; i++) {
-                    if (lines[i].includes('PDT')) {
-                        console.log('Found PDT on line', i, ':', lines[i]);
+                    if (lines[i].includes('PDT') || lines[i].includes('Promised delivery time')) {
+                        console.log('Found PDT/Promised on line', i, ':', lines[i]);
+                        
                         // Check current line for time
                         let timeMatch = lines[i].match(/(\d{1,2}:\d{2}\s*[ap]m)/i);
                         if (timeMatch) {
                             console.log('Found time on same line:', timeMatch[1]);
-                            pdtTime = parseTime(timeMatch[1]);
-                            break;
+                            foundPdtTimes.push(timeMatch[1]);
                         }
                         // Check next line
                         if (i + 1 < lines.length) {
                             timeMatch = lines[i + 1].match(/(\d{1,2}:\d{2}\s*[ap]m)/i);
                             if (timeMatch) {
                                 console.log('Found time on next line:', timeMatch[1]);
-                                pdtTime = parseTime(timeMatch[1]);
-                                break;
+                                foundPdtTimes.push(timeMatch[1]);
                             }
                         }
                         // Check line after next
@@ -1623,67 +1628,19 @@
                             timeMatch = lines[i + 2].match(/(\d{1,2}:\d{2}\s*[ap]m)/i);
                             if (timeMatch) {
                                 console.log('Found time on line after next:', timeMatch[1]);
-                                pdtTime = parseTime(timeMatch[1]);
-                                break;
+                                foundPdtTimes.push(timeMatch[1]);
                             }
                         }
                     }
                 }
-            }
-            
-            // NEW METHOD 4: If no PDT found, search for "Promised delivery time"
-            if (!pdtTime) {
-                console.log('No PDT found, searching for "Promised delivery time"...');
                 
-                // Method 4a: Look for "Promised delivery time" followed by date and time
-                const promisedRegex1 = /Promised\s+delivery\s+time\s*\n?\s*[^\n]*?\s*(\d{1,2}:\d{2}\s*[ap]m)/i;
-                const promisedMatch1 = text.match(promisedRegex1);
-                
-                if (promisedMatch1) {
-                    console.log('Promised delivery time regex 1 matched:', promisedMatch1[1]);
-                    pdtTime = parseTime(promisedMatch1[1]);
-                }
-                
-                // Method 4b: If that fails, do a line-by-line search
-                if (!pdtTime) {
-                    console.log('Promised delivery time regex failed, trying line search...');
-                    const lines = text.split('\n');
-                    for (let i = 0; i < lines.length; i++) {
-                        if (lines[i].includes('Promised delivery time')) {
-                            console.log('Found "Promised delivery time" on line', i, ':', lines[i]);
-                            
-                            // Check current line for time
-                            let timeMatch = lines[i].match(/(\d{1,2}:\d{2}\s*[ap]m)/i);
-                            if (timeMatch) {
-                                console.log('Found time on same line:', timeMatch[1]);
-                                pdtTime = parseTime(timeMatch[1]);
-                                break;
-                            }
-                            
-                            // Check next line
-                            if (i + 1 < lines.length) {
-                                timeMatch = lines[i + 1].match(/(\d{1,2}:\d{2}\s*[ap]m)/i);
-                                if (timeMatch) {
-                                    console.log('Found time on next line:', timeMatch[1]);
-                                    pdtTime = parseTime(timeMatch[1]);
-                                    break;
-                                }
-                            }
-                            
-                            // Check line after next
-                            if (i + 2 < lines.length) {
-                                timeMatch = lines[i + 2].match(/(\d{1,2}:\d{2}\s*[ap]m)/i);
-                                if (timeMatch) {
-                                    console.log('Found time on line after next:', timeMatch[1]);
-                                    pdtTime = parseTime(timeMatch[1]);
-                                    break;
-                                }
-                            }
-                        }
-                    }
+                // Use the last found PDT time
+                if (foundPdtTimes.length > 0) {
+                    console.log(`Found ${foundPdtTimes.length} PDT times via line search. Using last one:`, foundPdtTimes[foundPdtTimes.length - 1]);
+                    pdtTime = parseTime(foundPdtTimes[foundPdtTimes.length - 1]);
                 }
             }
-            
+
             if (pdtTime) {
                 console.log('PDT/Promised time successfully parsed:', formatTime(pdtTime));
                 result.timestamps.N = combineDateTime(baseDate, pdtTime, baseTime);
@@ -1696,11 +1653,11 @@
                 
                 // Add note about the Local Shop AE adjustment
                 if (applyLocalShopAE) {
-                    result.formulas.push(`N: PDT/Promised time = ${result.columns.N} (Local Shop AE: Using 30 minutes for calculations)`);
+                    result.formulas.push(`N: PDT/Promised time = ${result.columns.N} (Local Shop AE: Using 30 minutes for calculations - Last PDT in pattern)`);
                 } else if (isLocalShopAE && country !== 'AE') {
-                    result.formulas.push(`N: PDT/Promised time = ${result.columns.N} (Checkbox checked but Country is ${country}, not AE: Using 10 minutes)`);
+                    result.formulas.push(`N: PDT/Promised time = ${result.columns.N} (Checkbox checked but Country is ${country}, not AE: Using 10 minutes - Last PDT in pattern)`);
                 } else {
-                    result.formulas.push(`N: PDT/Promised time = ${result.columns.N} (Using 10 minutes for calculations)`);
+                    result.formulas.push(`N: PDT/Promised time = ${result.columns.N} (Using 10 minutes for calculations - Last PDT in pattern)`);
                 }
                 
                 console.log('N: PDT/Promised time final result:', result.columns.N, `(+${minutesToAdd}min)`);
