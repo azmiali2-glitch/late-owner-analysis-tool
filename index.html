@@ -621,7 +621,7 @@
                 <!-- Checkbox for Local Shop AE -->
                 <div class="checkbox-container">
                     <input type="checkbox" id="localShopAE">
-                    <label for="localShopAE">Local Shop AE</label>
+                    <label for="localShopAE">Local Shop AE (Adds 30 minutes to PDT instead of 10 minutes - ONLY if Country is AE)</label>
                 </div>
             </div>
             
@@ -945,6 +945,115 @@
             }
         }
         
+        // NEW HELPER: Find timeline event with dual pattern search (FROM FIRST CODE)
+        function findTimelineEvent(text, eventName) {
+            console.log(`=== Searching for ${eventName} ===`);
+            
+            // Pattern 1: "Something Delivery Something" (original pattern)
+            const pattern1 = new RegExp(`(\\d{1,2}:\\d{2}\\s*[ap]m)\\s+${eventName}\\s+Delivery\\s+${eventName}`, 'gi');
+            const matches1 = [...text.matchAll(pattern1)];
+            
+            // Pattern 2: "Something -" (alternative pattern)
+            const pattern2 = new RegExp(`(\\d{1,2}:\\d{2}\\s*[ap]m)\\s+${eventName}\\s*-`, 'gi');
+            const matches2 = [...text.matchAll(pattern2)];
+            
+            console.log(`Pattern 1 matches for ${eventName}:`, matches1.length);
+            console.log(`Pattern 2 matches for ${eventName}:`, matches2.length);
+            
+            let finalMatch = null;
+            
+            // Try pattern 1 first
+            if (matches1.length > 0) {
+                finalMatch = matches1[matches1.length - 1][0];
+                console.log(`Found ${eventName} with Pattern 1:`, finalMatch);
+            }
+            // If pattern 1 fails, try pattern 2
+            else if (matches2.length > 0) {
+                finalMatch = matches2[matches2.length - 1][0];
+                console.log(`Found ${eventName} with Pattern 2:`, finalMatch);
+            }
+            
+            if (finalMatch) {
+                // Extract the time from the match
+                const timeMatch = finalMatch.match(/(\d{1,2}:\d{2}\s*[ap]m)/i);
+                if (timeMatch) {
+                    return timeMatch[1];
+                }
+            }
+            
+            console.log(`No match found for ${eventName} with either pattern`);
+            return null;
+        }
+        
+        // NEW HELPER FUNCTION: Get last queued time from text (FROM FIRST CODE)
+        function getLastQueuedTime(text) {
+            console.log('=== Getting last queued time ===');
+            
+            // Parse time string to Date object
+            function parseTime(timeStr) {
+                if (!timeStr) return null;
+                
+                const cleaned = timeStr.trim().toLowerCase().replace(/\s+(am|pm)/, '$1');
+                const timeMatch = cleaned.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)$/);
+                if (!timeMatch) return null;
+                
+                let hours = parseInt(timeMatch[1]);
+                const minutes = parseInt(timeMatch[2]);
+                const seconds = timeMatch[3] ? parseInt(timeMatch[3]) : 0;
+                const period = timeMatch[4];
+                
+                if (period === 'pm') {
+                    if (hours < 12) hours += 12;
+                } else if (period === 'am') {
+                    if (hours === 12) hours = 0;
+                }
+                
+                const date = new Date();
+                date.setHours(hours, minutes, seconds, 0);
+                return date;
+            }
+            
+            // Find all Queued events (not Delivery Enqueued)
+            const lines = text.split('\n');
+            const queuedTimes = [];
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                
+                // Look for time patterns
+                const timeMatch = line.match(/^(\d{1,2}:\d{2}\s*[APM]{2})/i);
+                if (timeMatch) {
+                    // Check if next line contains "Queued" but not "Delivery Enqueued"
+                    if (i + 1 < lines.length) {
+                        const nextLine = lines[i + 1].trim();
+                        if (nextLine.includes("Queued") && !nextLine.includes("Delivery Enqueued")) {
+                            const time = parseTime(timeMatch[1]);
+                            if (time) {
+                                queuedTimes.push({
+                                    time: time,
+                                    timeStr: timeMatch[1],
+                                    index: i,
+                                    line: nextLine
+                                });
+                                console.log(`Found Queued at ${timeMatch[1]}: ${nextLine}`);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Return the last queued time (chronologically, not necessarily by index)
+            if (queuedTimes.length > 0) {
+                // Sort by time (latest first)
+                queuedTimes.sort((a, b) => b.time - a.time);
+                console.log(`Last queued time found: ${queuedTimes[0].timeStr}`);
+                return queuedTimes[0].time;
+            }
+            
+            console.log('No queued times found');
+            return null;
+        }
+        
         function processOrderDetails(text, isLocalShopAE) {
             const result = {
                 columns: {},
@@ -955,7 +1064,7 @@
             
             console.log('Processing text...');
             
-            // Helper: Parse time string to Date object - FIXED VERSION
+            // Helper: Parse time string to Date object - FIXED VERSION (FROM FIRST CODE)
             function parseTime(timeStr) {
                 if (!timeStr) return null;
                 
@@ -1006,7 +1115,7 @@
                 return date;
             }
             
-            // Helper: Parse date string
+            // Helper: Parse date string (FROM FIRST CODE)
             function parseDate(dateStr) {
                 if (!dateStr) return null;
                 
@@ -1051,7 +1160,7 @@
                 return dateObj;
             }
             
-            // Helper: Format time as HH:MM:SS AM/PM - FIXED VERSION
+            // Helper: Format time as HH:MM:SS AM/PM - FIXED VERSION (FROM FIRST CODE)
             function formatTime(date) {
                 if (!date) return '';
                 
@@ -1075,65 +1184,31 @@
                 return `${hoursStr}:${minutesStr}:${secondsStr} ${ampm}`;
             }
             
-            // Helper: Format date as MM/DD/YYYY
+            // Helper: Format date as MM/DD/YYYY (FROM FIRST CODE)
             function formatDate(date) {
                 if (!date) return '';
                 return (date.getMonth() + 1) + '/' + date.getDate() + '/' + date.getFullYear();
             }
             
-            // Helper: Format datetime
+            // Helper: Format datetime (FROM FIRST CODE)
             function formatDateTime(date) {
                 if (!date) return '';
                 return formatDate(date) + ' ' + formatTime(date);
             }
             
-            // NEW HELPER: Find timeline event with dual pattern search
-            function findTimelineEvent(eventName) {
-                console.log(`=== Searching for ${eventName} ===`);
-                
-                // Pattern 1: "Something Delivery Something" (original pattern)
-                const pattern1 = new RegExp(`(\\d{1,2}:\\d{2}\\s*[ap]m)\\s+${eventName}\\s+Delivery\\s+${eventName}`, 'gi');
-                const matches1 = [...text.matchAll(pattern1)];
-                
-                // Pattern 2: "Something -" (alternative pattern)
-                const pattern2 = new RegExp(`(\\d{1,2}:\\d{2}\\s*[ap]m)\\s+${eventName}\\s*-`, 'gi');
-                const matches2 = [...text.matchAll(pattern2)];
-                
-                console.log(`Pattern 1 matches for ${eventName}:`, matches1.length);
-                console.log(`Pattern 2 matches for ${eventName}:`, matches2.length);
-                
-                let finalMatch = null;
-                
-                // Try pattern 1 first
-                if (matches1.length > 0) {
-                    finalMatch = matches1[matches1.length - 1][0];
-                    console.log(`Found ${eventName} with Pattern 1:`, finalMatch);
-                }
-                // If pattern 1 fails, try pattern 2
-                else if (matches2.length > 0) {
-                    finalMatch = matches2[matches2.length - 1][0];
-                    console.log(`Found ${eventName} with Pattern 2:`, finalMatch);
-                }
-                
-                if (finalMatch) {
-                    // Extract the time from the match
-                    const timeMatch = finalMatch.match(/(\d{1,2}:\d{2}\s*[ap]m)/i);
-                    if (timeMatch) {
-                        return timeMatch[1];
-                    }
-                }
-                
-                console.log(`No match found for ${eventName} with either pattern`);
-                return null;
+            // Helper: Convert datetime difference to seconds (FROM FIRST CODE)
+            function datetimeToSeconds(date1, date2) {
+                if (!date1 || !date2) return 0;
+                return (date2 - date1) / 1000;
             }
             
-            // B: Order ID
+            // B: Order ID (FROM FIRST CODE)
             const backendMatch = text.match(/(\d+)\s*Backend\s*Link/i);
             result.columns.B = backendMatch ? backendMatch[1].trim() : '';
             result.formulas.push('Order ID = ' + result.columns.B);
             console.log('B: Order ID =', result.columns.B);
             
-            // C: Country - UPDATED to handle multiple patterns
+            // C: Country - UPDATED to handle multiple patterns (FROM FIRST CODE)
             let countryMatch = text.match(/TB_([A-Z]{2})/i);
             if (!countryMatch) {
                 // Try HF_ pattern if TB_ not found
@@ -1147,7 +1222,7 @@
             result.formulas.push('C: Country = ' + result.columns.C);
             console.log('C: Country =', result.columns.C);
             
-            // D: Order Date
+            // D: Order Date (FROM FIRST CODE)
             const dateMatch = text.match(/Ordered at\s*[:]?\s*(\w{3}\s+\d{1,2}\s+\w{3}|\d{1,2}\s+\w{3})/i);
             let orderDate = null;
             if (dateMatch) {
@@ -1160,23 +1235,53 @@
             result.formulas.push('D: Order Date = ' + result.columns.D);
             console.log('D: Order Date =', result.columns.D);
             
-            // E: Ordered at - FIXED MULTILINE VERSION
-            console.log('=== Searching for E: Ordered at ===');
+            // E: Ordered at - MODIFIED TO GET THE LAST VALUE (FROM FIRST CODE)
+            console.log('=== Searching for E: Ordered at (Getting last value) ===');
             
-            // Method 1: Look for "Ordered at" then capture time from next line (multiline)
-            const orderedAtRegex1 = /Ordered\s+at[\s\S]*?(\d{1,2}:\d{2}\s*[ap]m)/i;
-            const orderedTimeMatch1 = text.match(orderedAtRegex1);
+            // Find ALL matches for "Ordered at" patterns and get the last one
+            const orderedAtPatterns = [
+                // Pattern 1: "Ordered at" with time on same line or next line
+                /Ordered\s+at\s*[:]?\s*(\d{1,2}:\d{2}\s*[ap]m)/gi,
+                // Pattern 2: "Ordered at" on one line, time on next line
+                /Ordered\s+at\s*\n\s*(\d{1,2}:\d{2}\s*[ap]m)/gi,
+                // Pattern 3: "Ordered at:" followed by date, then time on next line
+                /Ordered\s+at[^\n]*\n[^\n]*(\d{1,2}:\d{2}\s*[ap]m)/gi
+            ];
             
-            let orderedTime = null;
-            if (orderedTimeMatch1) {
-                console.log('Ordered at regex 1 matched:', orderedTimeMatch1[1]);
-                console.log('Full match (first 100 chars):', orderedTimeMatch1[0].substring(0, 100));
-                orderedTime = parseTime(orderedTimeMatch1[1]);
+            let lastOrderedTime = null;
+            let allMatches = [];
+            
+            // Collect all matches from all patterns
+            orderedAtPatterns.forEach(pattern => {
+                const matches = [...text.matchAll(pattern)];
+                matches.forEach(match => {
+                    if (match[1]) {
+                        allMatches.push({
+                            time: match[1],
+                            index: match.index,
+                            pattern: pattern.toString()
+                        });
+                    }
+                });
+            });
+            
+            console.log('Found ordered at matches:', allMatches.length);
+            allMatches.forEach((match, i) => {
+                console.log(`Match ${i}: ${match.time} at index ${match.index}`);
+            });
+            
+            // Get the last match (with highest index)
+            if (allMatches.length > 0) {
+                // Sort by index descending to get the last occurrence
+                allMatches.sort((a, b) => b.index - a.index);
+                const lastMatch = allMatches[0];
+                console.log('Using last ordered at match:', lastMatch.time);
+                lastOrderedTime = parseTime(lastMatch.time);
             }
             
-            // Method 2: If first method fails, try line-by-line search
-            if (!orderedTime) {
-                console.log('Ordered at regex 1 failed, trying line search...');
+            // If still not found, try line-by-line search as fallback
+            if (!lastOrderedTime) {
+                console.log('Pattern search failed, trying line-by-line search...');
                 const lines = text.split('\n');
                 for (let i = 0; i < lines.length; i++) {
                     if (lines[i].includes('Ordered at')) {
@@ -1185,51 +1290,32 @@
                         let timeMatch = lines[i].match(/(\d{1,2}:\d{2}\s*[ap]m)/i);
                         if (timeMatch) {
                             console.log('Found time on same line:', timeMatch[1]);
-                            orderedTime = parseTime(timeMatch[1]);
-                            break;
+                            lastOrderedTime = parseTime(timeMatch[1]);
+                            // Don't break, continue to find the last one
                         }
                         // Check next line
                         if (i + 1 < lines.length) {
                             timeMatch = lines[i + 1].match(/(\d{1,2}:\d{2}\s*[ap]m)/i);
                             if (timeMatch) {
                                 console.log('Found time on next line:', timeMatch[1]);
-                                orderedTime = parseTime(timeMatch[1]);
-                                break;
-                            }
-                        }
-                        // Check line after next
-                        if (i + 2 < lines.length) {
-                            timeMatch = lines[i + 2].match(/(\d{1,2}:\d{2}\s*[ap]m)/i);
-                            if (timeMatch) {
-                                console.log('Found time on line after next:', timeMatch[1]);
-                                orderedTime = parseTime(timeMatch[1]);
-                                break;
+                                lastOrderedTime = parseTime(timeMatch[1]);
+                                // Don't break, continue to find the last one
                             }
                         }
                     }
                 }
             }
             
-            // Method 3: Try a more specific pattern for the structure
-            if (!orderedTime) {
-                console.log('Line search failed, trying specific pattern...');
-                const orderedAtRegex3 = /Ordered\s+at\s*\n\s*[^\n]*?(\d{1,2}:\d{2}\s*[ap]m)/i;
-                const orderedTimeMatch3 = text.match(orderedAtRegex3);
-                if (orderedTimeMatch3) {
-                    console.log('Ordered at regex 3 matched:', orderedTimeMatch3[1]);
-                    orderedTime = parseTime(orderedTimeMatch3[1]);
-                }
-            }
-            
-            if (orderedTime) {
-                console.log('Ordered at time successfully parsed:', formatTime(orderedTime));
-                result.columns.E = formatTime(orderedTime);
+            if (lastOrderedTime) {
+                console.log('Ordered at time (LAST) successfully parsed:', formatTime(lastOrderedTime));
+                result.columns.E = formatTime(lastOrderedTime);
+                result.formulas.push('E: Ordered at (LAST value) = ' + result.columns.E);
             } else {
                 console.log('No ordered time found after all attempts');
                 result.columns.E = 'N/A';
+                result.formulas.push('E: Ordered at = N/A (not found)');
             }
-            result.formulas.push('E: Ordered at = ' + result.columns.E);
-            console.log('E: Ordered at =', result.columns.E);
+            console.log('E: Ordered at (FINAL) =', result.columns.E);
             
             // If no order date yet, use today
             if (!orderDate) {
@@ -1240,12 +1326,12 @@
             
             // Store base values for calculations
             const baseDate = orderDate;
-            const baseTime = orderedTime;
+            const baseTime = lastOrderedTime;
             
             console.log('Base date:', baseDate.toLocaleDateString());
             console.log('Base time:', baseTime ? baseTime.toLocaleTimeString() : 'null');
             
-            // Helper: Combine date and time, adjust for midnight crossing
+            // Helper: Combine date and time, adjust for midnight crossing (FROM FIRST CODE)
             function combineDateTime(datePart, timeValue, referenceTime) {
                 if (!datePart || !timeValue) return null;
                 
@@ -1260,8 +1346,8 @@
                 return dateTime;
             }
             
-            // F: Queued At - USING DUAL PATTERN SEARCH
-            const queuedTimeStr = findTimelineEvent('Queued');
+            // F: Queued At - USING DUAL PATTERN SEARCH (FROM FIRST CODE)
+            const queuedTimeStr = findTimelineEvent(text, 'Queued');
             if (queuedTimeStr) {
                 console.log('Queued time found:', queuedTimeStr);
                 const queuedTime = parseTime(queuedTimeStr);
@@ -1283,8 +1369,8 @@
             }
             result.formulas.push('F: Queued At = ' + result.columns.F);
             
-            // G: Courier Notified - USING DUAL PATTERN SEARCH
-            const courierTimeStr = findTimelineEvent('Courier Notified');
+            // G: Courier Notified - USING DUAL PATTERN SEARCH (FROM FIRST CODE)
+            const courierTimeStr = findTimelineEvent(text, 'Courier Notified');
             if (courierTimeStr) {
                 console.log('Courier Notified time found:', courierTimeStr);
                 const courierTime = parseTime(courierTimeStr);
@@ -1306,8 +1392,8 @@
             }
             result.formulas.push('G: Courier Notified = ' + result.columns.G);
             
-            // H: Accepted At - USING DUAL PATTERN SEARCH
-            const acceptedTimeStr = findTimelineEvent('Accepted');
+            // H: Accepted At - USING DUAL PATTERN SEARCH (FROM FIRST CODE)
+            const acceptedTimeStr = findTimelineEvent(text, 'Accepted');
             if (acceptedTimeStr) {
                 console.log('Accepted time found:', acceptedTimeStr);
                 const acceptedTime = parseTime(acceptedTimeStr);
@@ -1333,8 +1419,8 @@
             }
             result.formulas.push('H: Accepted At = ' + result.columns.H);
             
-            // I: Near Pickup - USING DUAL PATTERN SEARCH
-            const nearPickupTimeStr = findTimelineEvent('Near Pickup');
+            // I: Near Pickup - USING DUAL PATTERN SEARCH (FROM FIRST CODE)
+            const nearPickupTimeStr = findTimelineEvent(text, 'Near Pickup');
             if (nearPickupTimeStr) {
                 console.log('Near Pickup time found:', nearPickupTimeStr);
                 const nearPickupTime = parseTime(nearPickupTimeStr);
@@ -1360,7 +1446,7 @@
             }
             result.formulas.push('I: Near Pickup = ' + result.columns.I);
             
-            // J: Est. Pickup (CPT)
+            // J: Est. Pickup (CPT) (FROM FIRST CODE)
             const acceptedDashMatches = [...text.matchAll(/Accepted\s*[-]\s*(\d{1,2}:\d{2}\s*[apm]{2})/gi)];
             if (acceptedDashMatches.length > 0) {
                 const lastAcceptedDash = acceptedDashMatches[acceptedDashMatches.length - 1][1];
@@ -1391,8 +1477,8 @@
             result.formulas.push('J: Est. Pickup (CPT) = ' + result.columns.J);
             console.log('J: Est. Pickup (CPT) =', result.columns.J);
             
-            // K: Picked Up At - USING DUAL PATTERN SEARCH
-            const pickedUpTimeStr = findTimelineEvent('Picked Up');
+            // K: Picked Up At - USING DUAL PATTERN SEARCH (FROM FIRST CODE)
+            const pickedUpTimeStr = findTimelineEvent(text, 'Picked Up');
             if (pickedUpTimeStr) {
                 console.log('Picked Up time found:', pickedUpTimeStr);
                 const pickedUpTime = parseTime(pickedUpTimeStr);
@@ -1418,7 +1504,7 @@
             }
             result.formulas.push('K: Picked Up At = ' + result.columns.K);
             
-            // L: Est. Dropoff
+            // L: Est. Dropoff (FROM FIRST CODE)
             console.log('=== Searching for L: Est. Dropoff ===');
             
             // Method 1: Use your exact Google Sheets formula pattern
@@ -1542,8 +1628,8 @@
             result.formulas.push('L: Est. Dropoff = ' + result.columns.L);
             console.log('=== L: Est. Dropoff final result =', result.columns.L, '===');
             
-            // M: Near Dropoff - USING DUAL PATTERN SEARCH
-            const nearDropoffTimeStr = findTimelineEvent('Near Dropoff');
+            // M: Near Dropoff - USING DUAL PATTERN SEARCH (FROM FIRST CODE)
+            const nearDropoffTimeStr = findTimelineEvent(text, 'Near Dropoff');
             if (nearDropoffTimeStr) {
                 console.log('Near Dropoff time found:', nearDropoffTimeStr);
                 const nearDropoffTime = parseTime(nearDropoffTimeStr);
@@ -1569,7 +1655,7 @@
             }
             result.formulas.push('M: Near Dropoff = ' + result.columns.M);
             
-            // N: PDT - MODIFIED TO GET LAST PDT IN THE PATTERN
+            // N: PDT - MODIFIED TO GET LAST PDT IN THE PATTERN (FROM FIRST CODE)
             console.log('=== Searching for N: PDT ===');
 
             // Method 1: Find ALL PDT matches and take the last one
@@ -1667,7 +1753,7 @@
                 result.formulas.push('N: PDT/Promised delivery time = N/A');
             }
             
-            // O: food_is_ready_at
+            // O: food_is_ready_at (FROM FIRST CODE)
             const foodReadyMatch = text.match(/Food\s+is\s+ready\s+at\s*[:]?\s*(\d{1,2}:\d{2}\s*[apm]+)/i);
             if (foodReadyMatch) {
                 console.log('Food ready match found:', foodReadyMatch[1]);
@@ -1691,7 +1777,7 @@
             result.formulas.push('O: food_is_ready_at = ' + result.columns.O);
             console.log('O: food_is_ready_at =', result.columns.O);
             
-            // P: cancellation_time - UTC-BASED WITH COUNTRY OFFSETS
+            // P: cancellation_time - UTC-BASED WITH COUNTRY OFFSETS (FROM FIRST CODE)
             const nowUTC = new Date(); // This is browser local, but we'll convert
             
             const countryUTCOffsets = {
@@ -1719,7 +1805,7 @@
             result.formulas.push(`P: cancellation_time = UTC + ${targetOffset} hours (Country: ${countryCode}) = ${result.columns.P}`);
             console.log(`P: cancellation_time = ${result.columns.P} (UTC+${targetOffset} for country ${countryCode})`);
             
-            // Q: old_cpt
+            // Q: old_cpt (FROM FIRST CODE)
             const oldCptMatch = text.match(/Pickup\s*[-]\s*Committed\s*[:]?\s*(\d{1,2}:\d{2}[apm]+)/i);
             if (oldCptMatch) {
                 console.log('Old CPT match found:', oldCptMatch[1]);
@@ -1732,7 +1818,7 @@
             result.formulas.push('Q: old_cpt = ' + result.columns.Q);
             console.log('Q: old_cpt =', result.columns.Q);
             
-            // R: cpt =IF(J2>Q2,J2,Q2)
+            // R: cpt =IF(J2>Q2,J2,Q2) (FROM FIRST CODE)
             if (result.timestamps.J && result.timestamps.Q) {
                 result.timestamps.R = result.timestamps.J > result.timestamps.Q ? result.timestamps.J : result.timestamps.Q;
                 result.columns.R = formatTime(result.timestamps.R);
@@ -1745,11 +1831,11 @@
             }
             result.formulas.push('R: cpt = MAX(J, Q) = ' + result.columns.R);
             
-            // S: is_wfa
+            // S: is_wfa (FROM FIRST CODE)
             result.columns.S = text.includes("Scheduled") ? "TRUE" : "FALSE";
             result.formulas.push('S: is_wfa (Scheduled) = ' + result.columns.S);
             
-            // T: Before PDT Check - MODIFIED VERSION (uses cancellation time as fallback)
+            // T: Before PDT Check - MODIFIED VERSION (uses cancellation time as fallback) (FROM FIRST CODE)
             console.log('=== Calculating T: Before PDT Check (Modified) ===');
             result.columns.T = "";
             
@@ -1787,13 +1873,7 @@
             }
             result.formulas.push('T: Before PDT Check = ' + result.columns.T);
             
-            // Helper: Convert datetime difference to seconds
-            function datetimeToSeconds(date1, date2) {
-                if (!date1 || !date2) return 0;
-                return (date2 - date1) / 1000;
-            }
-            
-            // U: System Late Duration - UPDATED FORMULA: IF(H<>"", (H-F)*86400, IF(P<>"", (P-F)*86400, 0))
+            // U: System Late Duration - UPDATED FORMULA: IF(H<>"", (H-F)*86400, IF(P<>"", (P-F)*86400, 0)) (FROM FIRST CODE)
             let U_seconds = 0;
             if (result.timestamps.H && result.timestamps.F) {
                 // Use H-F if H exists
@@ -1808,15 +1888,40 @@
             result.columns.U = Math.round(U_seconds) + "s";
             result.formulas.push('U: System Late Duration = IF(H<>"", (H-F)*86400, IF(P<>"", (P-F)*86400, 0)) = ' + result.columns.U);
             
-            // V: Vendor Late Duration
+            // V: Vendor Late Duration - UPDATED WITH NEW CONDITION (FROM FIRST CODE)
             let V_seconds = 0;
+            let V_calculationType = 'standard'; // 'standard' or 'new'
+
             if (result.timestamps.K && result.timestamps.R) {
+                // Standard condition: K exists
                 V_seconds = datetimeToSeconds(result.timestamps.R, result.timestamps.K);
+                V_calculationType = 'standard';
+                console.log('V: Using standard calculation (K - R)');
+            } else if (!result.columns.K && result.timestamps.I && result.timestamps.R && result.timestamps.P) {
+                // NEW CONDITION: K is N/A, I exists, calculate (P - R)
+                V_seconds = datetimeToSeconds(result.timestamps.R, result.timestamps.P);
+                V_calculationType = 'new';
+                console.log(`V: Using NEW vendor delay calculation (P - R) because K is N/A`);
+                console.log(`R (CPT): ${formatTime(result.timestamps.R)}, P (cancellation_time): ${formatTime(result.timestamps.P)}`);
+                console.log(`V seconds calculated: ${V_seconds}s`);
+            } else {
+                console.log('V: No vendor delay calculated');
             }
             result.columns.V = Math.round(V_seconds) + "s";
-            result.formulas.push('V: Vendor Late Duration = ' + result.columns.V);
+
+            // Store calculation type for display
+            result.V_calculationType = V_calculationType;
+
+            // Create appropriate formula description
+            if (V_calculationType === 'new') {
+                result.formulas.push(`V: Vendor Late Duration = NEW: (P - R) [because K is N/A and I exists] = ${result.columns.V}`);
+            } else if (V_calculationType === 'standard') {
+                result.formulas.push(`V: Vendor Late Duration = (K - R) = ${result.columns.V}`);
+            } else {
+                result.formulas.push(`V: Vendor Late Duration = 0 = ${result.columns.V}`);
+            }
             
-            // W: Rider Delay After Pickup - MODIFIED VERSION
+            // W: Rider Delay After Pickup - MODIFIED VERSION (FROM FIRST CODE)
             console.log('=== Calculating W: Rider Delay After Pickup (Modified) ===');
             let W_seconds = 0;
             
@@ -1851,27 +1956,59 @@
             result.formulas.push('W: Rider Delay After Pickup = (Dropoff Time - Est. Dropoff) = ' + result.columns.W);
             console.log('W: Rider Delay After Pickup final result =', result.columns.W);
             
-            // X: Rider Delay Before Pickup - UPDATED FORMULA: =IF(AND(I<>"" , I>J), (I-J)*86400, IF(I = "",(P-H) *86400,0))
+            // X: Rider Delay Before Pickup - UPDATED FORMULA WITH NEW LOGIC (FROM FIRST CODE)
             let X_seconds = 0;
-            // Primary condition: IF(AND(I<>"" , I>J), (I-J)*86400
-            if (result.timestamps.I && result.timestamps.J && result.timestamps.I > result.timestamps.J) {
-                X_seconds = datetimeToSeconds(result.timestamps.J, result.timestamps.I);
-            }
-            // Secondary condition: IF(I = "",(P-H) *86400,0)
-            else if (!result.columns.I && result.columns.P && result.timestamps.H) {
-                // If I is empty, calculate (P-H)
-                const P_time = parseTime(result.columns.P);
-                if (P_time) {
-                    X_seconds = datetimeToSeconds(result.timestamps.H, P_time);
-                    if (X_seconds < 0) {
-                        X_seconds = 0; // Ensure non-negative
+            
+            console.log('=== Calculating X: Rider Delay Before Pickup (Updated Logic) ===');
+            console.log('I (Near Pickup):', result.columns.I);
+            console.log('J (Est. Pickup):', result.columns.J);
+            console.log('P (cancellation_time):', result.columns.P);
+            console.log('H (Accepted At):', result.columns.H);
+            
+            // Get last queued time
+            const lastQueuedTime = getLastQueuedTime(text);
+            console.log('Last Queued time found:', lastQueuedTime ? formatTime(lastQueuedTime) : 'N/A');
+            
+            // Check if last queued time > H: Accepted At
+            const lastQueuedAfterAccepted = lastQueuedTime && result.timestamps.H && 
+                                          lastQueuedTime > result.timestamps.H;
+            
+            console.log('Check: last queued > H (Accepted At)?', lastQueuedAfterAccepted);
+            if (lastQueuedAfterAccepted) {
+                console.log('X: Last queued time > H (Accepted At), setting X to 0');
+                X_seconds = 0;
+                result.formulas.push('X: Rider Delay Before Pickup = 0 (because last queued time > H: Accepted At)');
+            } else {
+                // Original logic: =IF(AND(I<>"" , I>J), (I-J)*86400, IF(I = "",(P-H) *86400,0))
+                console.log('X: Applying original logic (last queued time ≤ H: Accepted At)');
+                
+                // Primary condition: IF(AND(I<>"" , I>J), (I-J)*86400
+                if (result.timestamps.I && result.timestamps.J && result.timestamps.I > result.timestamps.J) {
+                    X_seconds = datetimeToSeconds(result.timestamps.J, result.timestamps.I);
+                    console.log('X: Using primary condition (I > J)');
+                }
+                // Secondary condition: IF(I = "",(P-H) *86400,0)
+                else if (!result.columns.I && result.columns.P && result.timestamps.H) {
+                    // If I is empty, calculate (P-H)
+                    const P_time = parseTime(result.columns.P);
+                    if (P_time) {
+                        X_seconds = datetimeToSeconds(result.timestamps.H, P_time);
+                        if (X_seconds < 0) {
+                            X_seconds = 0; // Ensure non-negative
+                        }
                     }
+                    console.log('X: Using secondary condition (I is empty, calculating P-H)');
+                }
+                
+                if (lastQueuedAfterAccepted === false) {
+                    result.formulas.push('X: Rider Delay Before Pickup = Original logic (last queued ≤ H) = ' + Math.round(X_seconds) + "s");
                 }
             }
-            result.columns.X = Math.round(X_seconds) + "s";
-            result.formulas.push('X: Rider Delay Before Pickup = IF(AND(I<>"" , I>J), (I-J)*86400, IF(I = "",(P-H)*86400,0)) = ' + result.columns.X);
             
-            // Y: Vendor Late (Near Pickup vs Picked Up)
+            result.columns.X = Math.round(X_seconds) + "s";
+            console.log('X: Rider Delay Before Pickup final result =', result.columns.X);
+            
+            // Y: Vendor Late (Near Pickup vs Picked Up) (FROM FIRST CODE)
             let Y_seconds = 0;
             if (result.columns.S === "FALSE" && result.timestamps.I && result.timestamps.J && result.timestamps.K && result.timestamps.R) {
                 if (result.timestamps.I > result.timestamps.J && result.timestamps.K > result.timestamps.R) {
@@ -1883,7 +2020,7 @@
             result.columns.Y = Math.round(Y_seconds) + "s";
             result.formulas.push('Y: Vendor Late (Near Pickup vs Picked Up) = ' + result.columns.Y);
             
-            // Z: Late Owner - EXACT GOOGLE SHEETS FORMULA LOGIC
+            // Z: Late Owner - EXACT GOOGLE SHEETS FORMULA LOGIC (FROM FIRST CODE)
             let Z_result = "";
             
             console.log("=== CALCULATING Z RESULT ===");
@@ -2009,36 +2146,70 @@
             } else if (result.columns.Z.includes("Picked up by another rider")) {
                 finalResult.classList.add('result-picked-up-another-rider');
             } else if (result.columns.Z !== "Before PDT") {
-                // Get the numeric values for U, X, V (remove 's' and parse)
+                // FIXED: Get ALL delay values for comparison (FROM FIRST CODE)
                 const U_value = parseFloat(result.columns.U.replace('s', '') || 0);
                 const X_value = parseFloat(result.columns.X.replace('s', '') || 0);
                 const V_value = parseFloat(result.columns.V.replace('s', '') || 0);
+                const W_value = parseFloat(result.columns.W.replace('s', '') || 0);
+                const Y_value = parseFloat(result.columns.Y.replace('s', '') || 0);
                 
-                // Find the maximum value
-                const maxValue = Math.max(U_value, X_value, V_value);
+                // Find the maximum value among ALL delay types
+                const maxValue = Math.max(U_value, X_value, V_value, W_value, Y_value);
                 
-                // Determine which one is the max (with priority U > X > V)
-                if (U_value === maxValue) {
-                    finalResult.classList.add('result-long-dispatch'); // U corresponds to Long Dispatch
-                    if (result.columns.Z !== "Long Dispatch") {
-                        finalResult.textContent = "Long Dispatch";
-                        result.columns.Z = "Long Dispatch"; // Update the result
-                    }
-                } else if (X_value === maxValue) {
-                    finalResult.classList.add('result-rider-late'); // X corresponds to Rider Late
+                console.log("Delay values for fallback decision:");
+                console.log("U (System Late):", U_value);
+                console.log("X (Rider Before Pickup):", X_value);
+                console.log("V (Vendor Late):", V_value);
+                console.log("W (Rider After Pickup):", W_value);
+                console.log("Y (Vendor Near Pickup):", Y_value);
+                console.log("Maximum value:", maxValue);
+                
+                // Determine which one is the max with proper priority
+                // Priority: W (Rider After Pickup) > U (Long Dispatch) > X (Rider Late) > V (Vendor Late) > Y (Vendor Near Pickup)
+                if (W_value === maxValue) {
+                    // W (Rider After Pickup) is highest → Rider Late
+                    finalResult.classList.add('result-rider-late');
                     if (result.columns.Z !== "Rider Late") {
                         finalResult.textContent = "Rider Late";
-                        result.columns.Z = "Rider Late"; // Update the result
+                        result.columns.Z = "Rider Late";
+                        console.log("Fallback: Changed to Rider Late (W is largest)");
+                    }
+                } else if (U_value === maxValue) {
+                    // U is highest → Long Dispatch
+                    finalResult.classList.add('result-long-dispatch');
+                    if (result.columns.Z !== "Long Dispatch") {
+                        finalResult.textContent = "Long Dispatch";
+                        result.columns.Z = "Long Dispatch";
+                        console.log("Fallback: Changed to Long Dispatch (U is largest)");
+                    }
+                } else if (X_value === maxValue) {
+                    // X is highest → Rider Late (before pickup)
+                    finalResult.classList.add('result-rider-late');
+                    if (result.columns.Z !== "Rider Late") {
+                        finalResult.textContent = "Rider Late";
+                        result.columns.Z = "Rider Late";
+                        console.log("Fallback: Changed to Rider Late (X is largest)");
                     }
                 } else if (V_value === maxValue) {
-                    finalResult.classList.add('result-vendor-late'); // V corresponds to Vendor Late
+                    // V is highest → Vendor Late
+                    finalResult.classList.add('result-vendor-late');
                     if (result.columns.Z !== "Vendor Late") {
                         finalResult.textContent = "Vendor Late";
-                        result.columns.Z = "Vendor Late"; // Update the result
+                        result.columns.Z = "Vendor Late";
+                        console.log("Fallback: Changed to Vendor Late (V is largest)");
+                    }
+                } else if (Y_value === maxValue) {
+                    // Y is highest → Vendor Late (near pickup)
+                    finalResult.classList.add('result-vendor-late');
+                    if (result.columns.Z !== "Vendor Late") {
+                        finalResult.textContent = "Vendor Late";
+                        result.columns.Z = "Vendor Late";
+                        console.log("Fallback: Changed to Vendor Late (Y is largest)");
                     }
                 } else {
                     // Fallback if no max found (shouldn't happen)
                     finalResult.classList.add('result-on-time');
+                    console.log("Fallback: No clear max value, defaulting to On Time");
                 }
             } else {
                 finalResult.classList.add('result-on-time');
