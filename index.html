@@ -3442,87 +3442,76 @@
             result.formulas.push('D: Order Date = ' + result.columns.D);
             console.log('D: Order Date =', result.columns.D);
             
-            // E: Ordered at - MODIFIED TO GET THE LAST VALUE (FROM FIRST CODE)
-            console.log('=== Searching for E: Ordered at (Getting last value) ===');
-            
-            // Find ALL matches for "Ordered at" patterns and get the last one
-            const orderedAtPatterns = [
-                // Pattern 1: "Ordered at" with time on same line or next line
-                /Ordered\s+at\s*[:]?\s*(\d{1,2}:\d{2}\s*[ap]m)/gi,
-                // Pattern 2: "Ordered at" on one line, time on next line
-                /Ordered\s+at\s*\n\s*(\d{1,2}:\d{2}\s*[ap]m)/gi,
-                // Pattern 3: "Ordered at:" followed by date, then time on next line
-                /Ordered\s+at[^\n]*\n[^\n]*(\d{1,2}:\d{2}\s*[ap]m)/gi
-            ];
-            
-            let lastOrderedTime = null;
-            let allMatches = [];
-            
-            // Collect all matches from all patterns
-            orderedAtPatterns.forEach(pattern => {
-                const matches = [...text.matchAll(pattern)];
-                matches.forEach(match => {
-                    if (match[1]) {
-                        allMatches.push({
-                            time: match[1],
-                            index: match.index,
-                            pattern: pattern.toString()
-                        });
-                    }
+            // E: Ordered at - FIXED VERSION
+console.log('=== Searching for E: Ordered at ===');
+
+// Method 1: Look for the actual "Ordered at" section in Time Checks
+const timeChecksSection = text.match(/Time Checks[\s\S]*?(?=\n\n|\nID\s+\d|$)/i);
+let orderedTime = null;
+
+if (timeChecksSection) {
+    console.log('Found Time Checks section');
+    const timeChecksText = timeChecksSection[0];
+    
+    // Look for "Ordered at" followed by date and time
+    const orderedAtMatch = timeChecksText.match(/Ordered\s+at\s*\n\s*(\w{3}\s+\d{1,2}\s+\w{3}\s+(\d{1,2}:\d{2}\s*[ap]m))/i);
+    
+    if (orderedAtMatch) {
+        console.log('Found Ordered at in Time Checks:', orderedAtMatch[2]);
+        const timeMatch = orderedAtMatch[2];
+        orderedTime = parseTime(timeMatch);
+    }
+}
+
+// Method 2: If not found in Time Checks, try the old method
+if (!orderedTime) {
+    console.log('Not found in Time Checks, trying alternative patterns...');
+    
+    const orderedAtPatterns = [
+        // Pattern 1: "Ordered at" with time on same line
+        /Ordered\s+at\s*[:]?\s*(\d{1,2}:\d{2}\s*[ap]m)/gi,
+        // Pattern 2: "Ordered at" on one line, time on next line
+        /Ordered\s+at\s*\n\s*(\d{1,2}:\d{2}\s*[ap]m)/gi,
+        // Pattern 3: "Ordered at:" followed by date, then time on next line
+        /Ordered\s+at[^\n]*\n[^\n]*(\d{1,2}:\d{2}\s*[ap]m)/gi
+    ];
+    
+    let allMatches = [];
+    
+    orderedAtPatterns.forEach(pattern => {
+        const matches = [...text.matchAll(pattern)];
+        matches.forEach(match => {
+            if (match[1]) {
+                allMatches.push({
+                    time: match[1],
+                    index: match.index,
+                    pattern: pattern.toString()
                 });
-            });
-            
-            console.log('Found ordered at matches:', allMatches.length);
-            allMatches.forEach((match, i) => {
-                console.log(`Match ${i}: ${match.time} at index ${match.index}`);
-            });
-            
-            // Get the last match (with highest index)
-            if (allMatches.length > 0) {
-                // Sort by index descending to get the last occurrence
-                allMatches.sort((a, b) => b.index - a.index);
-                const lastMatch = allMatches[0];
-                console.log('Using last ordered at match:', lastMatch.time);
-                lastOrderedTime = parseTime(lastMatch.time);
             }
-            
-            // If still not found, try line-by-line search as fallback
-            if (!lastOrderedTime) {
-                console.log('Pattern search failed, trying line-by-line search...');
-                const lines = text.split('\n');
-                for (let i = 0; i < lines.length; i++) {
-                    if (lines[i].includes('Ordered at')) {
-                        console.log('Found "Ordered at" on line', i, ':', lines[i]);
-                        // Check current line for time
-                        let timeMatch = lines[i].match(/(\d{1,2}:\d{2}\s*[ap]m)/i);
-                        if (timeMatch) {
-                            console.log('Found time on same line:', timeMatch[1]);
-                            lastOrderedTime = parseTime(timeMatch[1]);
-                            // Don't break, continue to find the last one
-                        }
-                        // Check next line
-                        if (i + 1 < lines.length) {
-                            timeMatch = lines[i + 1].match(/(\d{1,2}:\d{2}\s*[ap]m)/i);
-                            if (timeMatch) {
-                                console.log('Found time on next line:', timeMatch[1]);
-                                lastOrderedTime = parseTime(timeMatch[1]);
-                                // Don't break, continue to find the last one
-                            }
-                        }
-                    }
-                }
-            }
-            
-            if (lastOrderedTime) {
-                console.log('Ordered at time (LAST) successfully parsed:', formatTime(lastOrderedTime));
-                result.columns.E = formatTime(lastOrderedTime);
-                result.formulas.push('E: Ordered at (LAST value) = ' + result.columns.E);
-            } else {
-                console.log('No ordered time found after all attempts');
-                result.columns.E = 'N/A';
-                result.formulas.push('E: Ordered at = N/A (not found)');
-            }
-            console.log('E: Ordered at (FINAL) =', result.columns.E);
+        });
+    });
+    
+    console.log('Found ordered at matches:', allMatches.length);
+    
+    // Get the FIRST match (not the last) for "Ordered at"
+    if (allMatches.length > 0) {
+        // Sort by index ascending to get the first occurrence
+        allMatches.sort((a, b) => a.index - b.index);
+        const firstMatch = allMatches[0];
+        console.log('Using first ordered at match:', firstMatch.time);
+        orderedTime = parseTime(firstMatch.time);
+    }
+}
+
+if (orderedTime) {
+    console.log('Ordered at time successfully parsed:', formatTime(orderedTime));
+    result.columns.E = formatTime(orderedTime);
+    result.formulas.push('E: Ordered at = ' + result.columns.E);
+} else {
+    console.log('No ordered time found');
+    result.columns.E = 'N/A';
+    result.formulas.push('E: Ordered at = N/A (not found)');
+}
             
             // If no order date yet, use today
             if (!orderDate) {
