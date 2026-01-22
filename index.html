@@ -195,50 +195,153 @@
             border-radius: 0;
         }
         
-        /* Checkbox Styling */
-        .checkbox-container {
+        /* =========================================== */
+        /* MODERN CHECKBOX STYLING - ENHANCEMENT 3️⃣ */
+        /* =========================================== */
+        
+        /* Modern Toggle Switch for Local AE */
+        .toggle-switch {
+            display: flex;
+            align-items: center;
+            gap: 15px;
             margin-top: 20px;
             padding: 15px;
             background: rgba(255, 89, 0, 0.05);
             border-radius: 12px;
             border: 1px solid rgba(255, 89, 0, 0.2);
-            display: flex;
-            align-items: center;
-            gap: 12px;
             transition: all 0.3s ease;
+            cursor: pointer;
+            user-select: none;
         }
         
-        .checkbox-container:hover {
+        .toggle-switch:hover {
             background: rgba(255, 89, 0, 0.1);
             border-color: rgba(255, 89, 0, 0.3);
         }
         
-        .checkbox-container input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
-            cursor: pointer;
-            accent-color: #ff5900;
+        .toggle-switch-input {
+            display: none;
         }
         
-        .checkbox-container label {
-            display: inline;
-            margin: 0;
-            font-weight: 500;
-            cursor: pointer;
+        .toggle-switch-slider {
+            position: relative;
+            width: 60px;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 30px;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+        
+        .toggle-switch-slider:before {
+            content: '';
+            position: absolute;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: white;
+            top: 2px;
+            left: 2px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        .toggle-switch-input:checked + .toggle-switch-slider {
+            background: linear-gradient(135deg, #ff5900 0%, #ff8c42 100%);
+        }
+        
+        .toggle-switch-input:checked + .toggle-switch-slider:before {
+            transform: translateX(30px);
+        }
+        
+        .toggle-switch-label {
+            font-weight: 600;
             color: #411517;
-            font-size: 0.95rem;
+            font-size: 1rem;
             flex: 1;
         }
         
-        /* Auto Popup Checkbox */
-        .checkbox-container.auto-popup {
-            background: rgba(159, 122, 234, 0.05);
-            border: 1px solid rgba(159, 122, 234, 0.2);
+        /* Modern Button-Style Checkbox for Split Deliveries */
+        .button-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(65, 21, 23, 0.05);
+            border-radius: 12px;
+            border: 2px solid rgba(65, 21, 23, 0.2);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            user-select: none;
         }
         
-        .checkbox-container.auto-popup:hover {
-            background: rgba(159, 122, 234, 0.1);
-            border-color: rgba(159, 122, 234, 0.3);
+        .button-checkbox:hover {
+            background: rgba(65, 21, 23, 0.1);
+            border-color: rgba(65, 21, 23, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .button-checkbox-input {
+            display: none;
+        }
+        
+        .button-checkbox-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+        }
+        
+        .button-checkbox-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            background: #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+        
+        .button-checkbox-icon svg {
+            width: 16px;
+            height: 16px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            fill: white;
+        }
+        
+        .button-checkbox-input:checked + .button-checkbox-content .button-checkbox-icon {
+            background: linear-gradient(135deg, #411517 0%, #5a1f22 100%);
+        }
+        
+        .button-checkbox-input:checked + .button-checkbox-content .button-checkbox-icon svg {
+            opacity: 1;
+        }
+        
+        .button-checkbox-label {
+            font-weight: 600;
+            color: #411517;
+            font-size: 1rem;
+        }
+        
+        .button-checkbox-description {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 4px;
+        }
+        
+        .button-checkbox.active {
+            background: rgba(65, 21, 23, 0.1);
+            border-color: #411517;
+            box-shadow: 0 4px 15px rgba(65, 21, 23, 0.15);
+        }
+        
+        /* Auto Popup Checkbox - Hidden */
+        .checkbox-container.auto-popup {
+            display: none !important;
         }
         
         /* Button Section */
@@ -518,7 +621,11 @@
             display: none !important;
         }
         
-        /* Modern Popup/Modal Styling */
+        /* =========================================== */
+        /* ULTRA-FAST POPUPS - ENHANCEMENT 4️⃣ */
+        /* Remove all delays, timeouts, animations */
+        /* =========================================== */
+        
         .popup-overlay {
             position: fixed;
             top: 0;
@@ -531,8 +638,11 @@
             justify-content: center;
             z-index: 1000;
             padding: 20px;
-            animation: fadeIn 0.3s ease;
+            /* REMOVED ANIMATION */
             backdrop-filter: blur(5px);
+            /* INSTANT APPEARANCE */
+            opacity: 1;
+            animation: none !important;
         }
         
         .popup-container {
@@ -543,26 +653,16 @@
             max-height: 90vh;
             overflow: hidden;
             box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
-            animation: slideUpPopup 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            /* REMOVED ANIMATION */
+            animation: none !important;
+            /* INSTANT APPEARANCE */
+            opacity: 1;
+            transform: none !important;
             display: flex;
             flex-direction: column;
         }
         
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        
-        @keyframes slideUpPopup {
-            from {
-                opacity: 0;
-                transform: translateY(30px) scale(0.95);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
-        }
+        /* Remove animation keyframes since they're no longer used */
         
         .popup-header {
             background: linear-gradient(135deg, #805ad5 0%, #9f7aea 100%);
@@ -847,6 +947,7 @@
             background: #f8f9fa;
             border-radius: 16px;
             border: 1px solid #e8e9ea;
+            display: none !important;
         }
         
         .split-deliveries-summary h4 {
@@ -984,83 +1085,139 @@
         
         /* Tab Navigation for Multi-Delivery Popup */
         .delivery-tabs {
-            display: flex;
-            gap: 5px;
-            margin-bottom: 20px;
-            border-bottom: 1px solid #e8e9ea;
-            padding-bottom: 10px;
-            overflow-x: auto;
+            display: none !important;
         }
         
-        .delivery-tab {
-            padding: 10px 20px;
-            background: #f8f9fa;
-            border: 1px solid #e8e9ea;
-            border-radius: 8px 8px 0 0;
-            font-weight: 500;
+        /* Delivery Info Header */
+        .delivery-info-header {
+            display: none !important;
+        }
+        
+        /* =========================================== */
+        /* NEW STYLES FOR REQUESTED ENHANCEMENTS */
+        /* =========================================== */
+        
+        /* 1️⃣ Back Button for Split Deliveries - ENHANCEMENT 2️⃣ */
+        .split-back-button-container {
+            grid-column: 1 / -1;
+            margin-bottom: 10px;
+            text-align: left;
+        }
+        
+        .split-back-btn {
+            background: linear-gradient(135deg, #f8f9fa 0%, #f0f2f4 100%);
+            color: #666;
+            border: 2px solid #e8e9ea;
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 12px;
             cursor: pointer;
             transition: all 0.3s ease;
-            white-space: nowrap;
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 8px;
         }
         
-        .delivery-tab:hover {
-            background: #f0f2f4;
-        }
-        
-        .delivery-tab.active {
-            background: #805ad5;
-            color: white;
-            border-color: #805ad5;
-        }
-        
-        .delivery-tab.active .tab-badge {
-            background: rgba(255, 255, 255, 0.3);
-            color: white;
-        }
-        
-        .tab-badge {
-            background: #e8e9ea;
-            color: #666;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-        
-        .delivery-info-header {
-            margin-bottom: 20px;
-            padding: 15px;
+        .split-back-btn:hover {
             background: white;
+            border-color: #ff8c42;
+            color: #ff5900;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(255, 89, 0, 0.15);
+        }
+        
+        .split-back-btn:before {
+            content: "←";
+            font-size: 1.2rem;
+        }
+        
+        /* Delivery Indicator */
+        .delivery-indicator {
+            background: rgba(255, 255, 255, 0.9);
             border-radius: 12px;
-            border: 1px solid #e8e9ea;
+            padding: 12px 20px;
+            margin: 15px 0;
+            border: 2px solid #e8e9ea;
+            color: #411517;
+            font-weight: 600;
+            text-align: center;
+            font-size: 1.1rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
         }
         
-        .delivery-info-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
-            margin-bottom: 10px;
-        }
-        
-        .delivery-info-item {
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .delivery-info-label {
-            font-size: 0.8rem;
+        .delivery-indicator .indicator-label {
             color: #666;
             font-weight: 500;
-            margin-bottom: 2px;
+            font-size: 0.95rem;
         }
         
-        .delivery-info-value {
-            font-size: 1rem;
-            font-weight: 600;
-            color: #411517;
+        .delivery-indicator .indicator-value {
+            background: linear-gradient(135deg, #ff5900 0%, #ff8c42 100%);
+            color: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            min-width: 80px;
+            display: inline-block;
+        }
+        
+        .delivery-indicator .indicator-separator {
+            color: #999;
+            margin: 0 4px;
+        }
+        
+        /* Popup Summary - Hidden */
+        #pickedUpPopup .popup-summary {
+            display: none !important;
+        }
+        
+        /* Popup Header Paragraph - Hidden */
+        #pickedUpPopup .popup-header p {
+            display: none !important;
+        }
+        
+        /* Visual Styling Harmonization */
+        #pickedUpPopup .popup-header {
+            background: linear-gradient(135deg, #ff5900 0%, #ff8c42 100%) !important;
+        }
+        
+        #splitDeliveriesPopup .popup-header {
+            background: linear-gradient(135deg, #ff5900 0%, #ff8c42 100%) !important;
+        }
+        
+        /* Update popup button colors to match theme */
+        #pickedUpPopup .popup-btn-primary {
+            background: linear-gradient(135deg, #411517 0%, #5a1f22 100%) !important;
+            box-shadow: 0 4px 15px rgba(65, 21, 23, 0.2) !important;
+        }
+        
+        #pickedUpPopup .popup-btn-primary:hover {
+            box-shadow: 0 8px 20px rgba(65, 21, 23, 0.3) !important;
+        }
+        
+        #splitDeliveriesPopup .popup-btn-primary {
+            background: linear-gradient(135deg, #411517 0%, #5a1f22 100%) !important;
+            box-shadow: 0 4px 15px rgba(65, 21, 23, 0.2) !important;
+        }
+        
+        #splitDeliveriesPopup .popup-btn-primary:hover {
+            box-shadow: 0 8px 20px rgba(65, 21, 23, 0.3) !important;
+        }
+        
+        /* Harmonize queued stage items */
+        .queued-stage-item:hover {
+            border-color: #ff8c42 !important;
+        }
+        
+        .queued-stage-checkbox input[type="checkbox"] {
+            accent-color: #ff5900 !important;
         }
         
         /* Responsive Design */
@@ -1269,170 +1426,6 @@
         .info-card {
             animation: fadeIn 0.5s ease forwards;
         }
-
-        /* =========================================== */
-        /* ADDED CSS FOR VISIBILITY CHANGES */
-        /* =========================================== */
-
-        /* 1️⃣ Hide the "Automatically show Picked up by Another Rider analysis popup" checkbox */
-        .checkbox-container.auto-popup {
-            display: none !important;
-        }
-
-        /* 2️⃣ Hide the entire Split Deliveries Analysis section */
-        #splitDeliveriesSummary {
-            display: none !important;
-        }
-
-        /* 3️⃣ Hide specific fields in SINGLE delivery picked up popup */
-        #pickedUpPopup .popup-summary {
-            display: none !important;
-        }
-
-        /* 4️⃣ Hide specific fields in MULTIPLE deliveries picked up popup */
-        #pickedUpPopup .delivery-info-header {
-            display: none !important;
-        }
-
-        /* 5️⃣ Prevent user switching between deliveries - Hide tabs */
-        #deliveryTabs {
-            display: none !important;
-        }
-
-        /* 6️⃣ Remove Apply Changes notification (hide alert) */
-        /* Note: Alert is a browser function, but we can't remove it without JS changes */
-        /* However, we can add a style to visually hide alerts if they appear in DOM */
-
-        /* Additional: Hide queued stages list header in multi-delivery popup */
-        #pickedUpPopup .popup-header p {
-            display: none !important;
-        }
-
-        /* 7️⃣ Cancel button already has proper behavior, just ensure it's visible */
-
-        /* 8️⃣ Visual Styling Harmonization */
-        /* Update popup header to match main theme */
-        #pickedUpPopup .popup-header {
-            background: linear-gradient(135deg, #ff5900 0%, #ff8c42 100%) !important;
-        }
-
-        #splitDeliveriesPopup .popup-header {
-            background: linear-gradient(135deg, #ff5900 0%, #ff8c42 100%) !important;
-        }
-
-        /* Update popup button colors to match theme */
-        #pickedUpPopup .popup-btn-primary {
-            background: linear-gradient(135deg, #411517 0%, #5a1f22 100%) !important;
-            box-shadow: 0 4px 15px rgba(65, 21, 23, 0.2) !important;
-        }
-
-        #pickedUpPopup .popup-btn-primary:hover {
-            box-shadow: 0 8px 20px rgba(65, 21, 23, 0.3) !important;
-        }
-
-        #splitDeliveriesPopup .popup-btn-primary {
-            background: linear-gradient(135deg, #411517 0%, #5a1f22 100%) !important;
-            box-shadow: 0 4px 15px rgba(65, 21, 23, 0.2) !important;
-        }
-
-        #splitDeliveriesPopup .popup-btn-primary:hover {
-            box-shadow: 0 8px 20px rgba(65, 21, 23, 0.3) !important;
-        }
-
-        /* Harmonize queued stage items */
-        .queued-stage-item:hover {
-            border-color: #ff8c42 !important;
-        }
-
-        .queued-stage-checkbox input[type="checkbox"] {
-            accent-color: #ff5900 !important;
-        }
-
-        /* Ensure hidden elements maintain layout */
-        .hidden-element {
-            visibility: hidden;
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            white-space: nowrap;
-            border: 0;
-        }
-
-        /* Ensure buttons and interactive elements remain functional even when hidden */
-        [style*="display: none"] {
-            /* This ensures elements with display:none are still in DOM but not visible */
-        }
-
-        /* =========================================== */
-        /* NEW CSS FOR REQUESTED CHANGES */
-        /* =========================================== */
-
-        /* 1️⃣ Delivery Indicator Styling */
-        .delivery-indicator {
-            background: rgba(255, 255, 255, 0.9);
-            border-radius: 12px;
-            padding: 12px 20px;
-            margin: 15px 0;
-            border: 2px solid #e8e9ea;
-            color: #411517;
-            font-weight: 600;
-            text-align: center;
-            font-size: 1.1rem;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-            display: none; /* Hidden by default, shown via JavaScript */
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-        
-        .delivery-indicator .indicator-label {
-            color: #666;
-            font-weight: 500;
-            font-size: 0.95rem;
-        }
-        
-        .delivery-indicator .indicator-value {
-            background: linear-gradient(135deg, #ff5900 0%, #ff8c42 100%);
-            color: white;
-            padding: 6px 16px;
-            border-radius: 20px;
-            font-weight: 700;
-            font-size: 1.1rem;
-            min-width: 80px;
-            display: inline-block;
-        }
-        
-        .delivery-indicator .indicator-separator {
-            color: #999;
-            margin: 0 4px;
-        }
-
-        /* 2️⃣ Hide any alert notifications visually */
-        .alert-notification,
-        .toast-notification,
-        .notification-banner {
-            display: none !important;
-            visibility: hidden !important;
-            opacity: 0 !important;
-            height: 0 !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            overflow: hidden !important;
-        }
-
-        /* Style to override any browser alert display */
-        body::after {
-            display: none !important;
-        }
-
-        /* =========================================== */
-        /* END OF NEW CSS */
-        /* =========================================== */
     </style>
 </head>
 <body>
@@ -1466,23 +1459,38 @@
                 
                 <!-- Split Deliveries Text Areas Container (hidden by default) -->
                 <div class="split-textareas-container" id="splitTextareasContainer" style="display: none;">
+                    <!-- Back Button for Multiple Deliveries - ENHANCEMENT 2️⃣ -->
+                    <div class="split-back-button-container">
+                        <button class="split-back-btn" onclick="goBackToSingleDelivery()">Back to Single Delivery</button>
+                    </div>
                     <!-- Dynamic text areas will be generated here -->
                 </div>
                 
-                <!-- Checkbox for Local Shop AE -->
-                <div class="checkbox-container">
-                    <input type="checkbox" id="localShopAE">
-                    <label for="localShopAE">Local Shop AE</label>
-                </div>
+                <!-- Modern Toggle Switch for Local AE - ENHANCEMENT 3️⃣ -->
+                <label class="toggle-switch" for="localShopAE">
+                    <input type="checkbox" class="toggle-switch-input" id="localShopAE">
+                    <div class="toggle-switch-slider"></div>
+                    <span class="toggle-switch-label">Local Shop AE</span>
+                </label>
                 
-                <!-- Checkbox for Split Deliveries -->
-                <div class="checkbox-container">
-                    <input type="checkbox" id="splitDeliveries">
-                    <label for="splitDeliveries">Split Deliveries</label>
-                </div>
+                <!-- Modern Button-Style Checkbox for Split Deliveries - ENHANCEMENT 3️⃣ -->
+                <label class="button-checkbox" for="splitDeliveries">
+                    <input type="checkbox" class="button-checkbox-input" id="splitDeliveries">
+                    <div class="button-checkbox-content">
+                        <div class="button-checkbox-icon">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="button-checkbox-label">Split Deliveries</div>
+                            <div class="button-checkbox-description">Analyze multiple deliveries from one order</div>
+                        </div>
+                    </div>
+                </label>
                 
-                <!-- Checkbox for Auto Show Popup -->
-                <div class="checkbox-container auto-popup">
+                <!-- Hidden Auto Popup Checkbox -->
+                <div class="checkbox-container auto-popup" style="display: none;">
                     <input type="checkbox" id="autoShowPopup" checked>
                     <label for="autoShowPopup">Automatically show Picked up by Another Rider analysis popup</label>
                 </div>
@@ -1558,23 +1566,24 @@
                     </div>
                 </div>
                 <div class="popup-actions">
-                    <button class="popup-btn popup-btn-secondary" onclick="closeSplitDeliveriesPopup()">Cancel</button>
+                    <!-- ENHANCEMENT 1️⃣: Cancel button now calls resetTool() -->
+                    <button class="popup-btn popup-btn-secondary" onclick="resetTool()">Cancel</button>
                     <button class="popup-btn popup-btn-primary" onclick="confirmSplitDeliveries()">Confirm</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modern Popup for Picked up by another rider analysis - UPDATED FOR MULTI-DELIVERY -->
+    <!-- Modern Popup for Picked up by another rider analysis -->
     <div class="popup-overlay" id="pickedUpPopup" style="display: none;">
         <div class="popup-container">
             <div class="popup-header">
                 <button class="popup-close" onclick="closePopup()">×</button>
-                <!-- 3️⃣ Page Title Updated -->
+                <!-- Page Title Updated -->
                 <h3>Additional Validation Is Required</h3>
                 <p>Review Queued stages for all deliveries with Picked up by another rider result</p>
                 
-                <!-- 1️⃣ Delivery Indicator Added -->
+                <!-- Delivery Indicator -->
                 <div class="delivery-indicator" id="deliveryIndicator">
                     <span class="indicator-label">Viewing Delivery</span>
                     <span class="indicator-value">
@@ -1584,13 +1593,13 @@
                     </span>
                 </div>
                 
-                <!-- Delivery Tabs for Multiple Deliveries -->
+                <!-- Delivery Tabs for Multiple Deliveries (hidden) -->
                 <div class="delivery-tabs" id="deliveryTabs">
                     <!-- Tabs will be generated here dynamically -->
                 </div>
             </div>
             <div class="popup-content">
-                <!-- Delivery Info Header -->
+                <!-- Delivery Info Header (hidden) -->
                 <div class="delivery-info-header" id="deliveryInfoHeader" style="display: none;">
                     <div class="delivery-info-row">
                         <div class="delivery-info-item">
@@ -1636,7 +1645,8 @@
                     </div>
                 </div>
                 <div class="popup-actions">
-                    <button class="popup-btn popup-btn-secondary" onclick="closePopup()">Cancel</button>
+                    <!-- ENHANCEMENT 1️⃣: Cancel button now calls resetTool() -->
+                    <button class="popup-btn popup-btn-secondary" onclick="resetTool()">Cancel</button>
                     <button class="popup-btn popup-btn-primary" onclick="applyPopupChanges()">Apply Changes</button>
                 </div>
             </div>
@@ -1670,12 +1680,124 @@
             currentTabIndex: 0
         };
         
+        // ===========================================
+        // ENHANCEMENT 1️⃣: RESET TOOL FUNCTION
+        // ===========================================
+        function resetTool() {
+            console.log("Resetting tool to initial state...");
+            
+            // 1. Clear all text areas
+            document.getElementById('orderDetails').value = '';
+            
+            // Clear split delivery text areas if they exist
+            const splitContainer = document.getElementById('splitTextareasContainer');
+            for (let i = 0; i < splitDeliveriesData.numberOfDeliveries; i++) {
+                const textarea = document.getElementById(`orderDetails${i}`);
+                if (textarea) {
+                    textarea.value = '';
+                }
+            }
+            
+            // 2. Reset checkboxes to default state
+            document.getElementById('localShopAE').checked = false;
+            document.getElementById('splitDeliveries').checked = false;
+            
+            // Update button checkbox visual state
+            const splitCheckbox = document.querySelector('.button-checkbox');
+            if (splitCheckbox) {
+                splitCheckbox.classList.remove('active');
+            }
+            
+            // 3. Reset UI to single delivery mode
+            document.getElementById('singleInputWrapper').style.display = 'block';
+            splitContainer.style.display = 'none';
+            splitContainer.innerHTML = '<div class="split-back-button-container"><button class="split-back-btn" onclick="goBackToSingleDelivery()">Back to Single Delivery</button></div>';
+            
+            // 4. Hide results and errors
+            document.getElementById('resultContainer').style.display = 'none';
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('loading').style.display = 'none';
+            
+            // 5. Reset split deliveries data
+            splitDeliveriesData.isSplitActive = false;
+            splitDeliveriesData.numberOfDeliveries = 0;
+            splitDeliveriesData.deliveries = [];
+            splitDeliveriesData.deliveryResults = [];
+            splitDeliveriesData.finalResult = null;
+            
+            // 6. Reset analysis data
+            debugData = {};
+            pickedUpAnalysisData = {
+                patterns: [],
+                originalCalculations: {},
+                adjustedCalculations: {},
+                checkedPatterns: new Set()
+            };
+            currentEditingDeliveryIndex = null;
+            multiDeliveryPopupData = {
+                deliveries: [],
+                currentTabIndex: 0
+            };
+            
+            // 7. Close all popups
+            closePopup();
+            closeSplitDeliveriesPopup();
+            
+            // 8. Enable analyze button
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            analyzeBtn.disabled = false;
+            analyzeBtn.innerHTML = '<span class="btn-icon">🚀</span><span>Analyze Order</span>';
+            
+            console.log("Tool reset complete - fresh state restored");
+        }
+        
+        // ===========================================
+        // ENHANCEMENT 2️⃣: BACK BUTTON FUNCTION
+        // ===========================================
+        function goBackToSingleDelivery() {
+            console.log("Going back to single delivery mode...");
+            
+            // 1. Reset split deliveries data
+            splitDeliveriesData.isSplitActive = false;
+            splitDeliveriesData.numberOfDeliveries = 0;
+            splitDeliveriesData.deliveries = [];
+            splitDeliveriesData.deliveryResults = [];
+            splitDeliveriesData.finalResult = null;
+            
+            // 2. Uncheck the split deliveries checkbox
+            document.getElementById('splitDeliveries').checked = false;
+            
+            // Update button checkbox visual state
+            const splitCheckbox = document.querySelector('.button-checkbox');
+            if (splitCheckbox) {
+                splitCheckbox.classList.remove('active');
+            }
+            
+            // 3. Show single input, hide split container
+            document.getElementById('singleInputWrapper').style.display = 'block';
+            document.getElementById('splitTextareasContainer').style.display = 'none';
+            
+            // 4. Clear split results display
+            document.getElementById('splitDeliveriesSummary').style.display = 'none';
+            
+            // 5. Clear any existing results
+            document.getElementById('resultContainer').style.display = 'none';
+            
+            console.log("Back to single delivery mode complete");
+        }
+        
         // Function to show split deliveries popup
         function showSplitDeliveriesPopup() {
             const popup = document.getElementById('splitDeliveriesPopup');
             const numberGrid = document.getElementById('numberSelectionGrid');
             const selectedCountDisplay = document.getElementById('selectedCountDisplay');
             const deliveryCountInput = document.getElementById('deliveryCountInput');
+            
+            // Update button checkbox visual state
+            const splitCheckbox = document.querySelector('.button-checkbox');
+            if (splitCheckbox) {
+                splitCheckbox.classList.add('active');
+            }
             
             // Generate number buttons
             numberGrid.innerHTML = '';
@@ -1723,6 +1845,12 @@
             
             // Uncheck the checkbox if popup is closed without confirming
             document.getElementById('splitDeliveries').checked = false;
+            
+            // Update button checkbox visual state
+            const splitCheckbox = document.querySelector('.button-checkbox');
+            if (splitCheckbox) {
+                splitCheckbox.classList.remove('active');
+            }
         }
         
         // Function to confirm split deliveries count
@@ -1758,7 +1886,7 @@
             splitContainer.style.display = 'grid';
             
             // Clear existing text areas
-            splitContainer.innerHTML = '';
+            splitContainer.innerHTML = '<div class="split-back-button-container"><button class="split-back-btn" onclick="goBackToSingleDelivery()">Back to Single Delivery</button></div>';
             
             // Generate new text areas
             for (let i = 0; i < count; i++) {
@@ -1798,7 +1926,12 @@
             const singleInputWrapper = document.getElementById('singleInputWrapper');
             const splitContainer = document.getElementById('splitTextareasContainer');
             
+            // Update button checkbox visual state
+            const buttonCheckbox = document.querySelector('.button-checkbox');
             if (splitCheckbox.checked) {
+                if (buttonCheckbox) {
+                    buttonCheckbox.classList.add('active');
+                }
                 showSplitDeliveriesPopup();
             } else {
                 // Reset to single input mode
@@ -1806,6 +1939,11 @@
                 splitDeliveriesData.numberOfDeliveries = 0;
                 splitContainer.style.display = 'none';
                 singleInputWrapper.style.display = 'block';
+                
+                // Update button checkbox visual state
+                if (buttonCheckbox) {
+                    buttonCheckbox.classList.remove('active');
+                }
                 
                 // Clear split results
                 clearSplitResults();
@@ -1845,7 +1983,7 @@
             // Get checkbox state
             const isLocalShopAE = document.getElementById('localShopAE').checked;
             const isSplitActive = splitDeliveriesData.isSplitActive;
-            const autoShowPopup = document.getElementById('autoShowPopup').checked;
+            const autoShowPopup = true; // Auto show is always enabled now
             
             // Get order details based on mode
             const deliveries = getOrderDetailsForAnalysis();
@@ -2118,7 +2256,7 @@
             // Show the delivery info header
             document.getElementById('deliveryInfoHeader').style.display = 'block';
             
-            // 1️⃣ Update delivery indicator
+            // Update delivery indicator
             updateDeliveryIndicator(tabIndex, deliveryIndices.length);
         }
         
@@ -2173,7 +2311,7 @@
             // Update popup summary
             updatePopupSummary();
             
-            // 1️⃣ Update delivery indicator
+            // Update delivery indicator
             updateDeliveryIndicator(tabIndex, multiDeliveryPopupData.deliveries.length);
         }
         
@@ -2629,13 +2767,9 @@
                     const nextDeliveryIndex = multiDeliveryPopupData.deliveries[nextTabIndex];
                     switchDeliveryTab(nextTabIndex, nextDeliveryIndex);
                     
-                    // 2️⃣ Remove/hide the notification - Commented out the alert
-                    // No toast, alert, banner, or message should appear
-                    // alert(`Changes applied to Delivery ${deliveryIndex + 1}. Now editing Delivery ${nextDeliveryIndex + 1}.`);
+                    // No alert or notification shown
                 } else {
                     // All deliveries processed, close popup
-                    // 2️⃣ Remove/hide the notification - Commented out the alert
-                    // alert(`Changes applied to all ${multiDeliveryPopupData.deliveries.length} deliveries.`);
                     closePopup();
                 }
             } else if (currentEditingDeliveryIndex !== null) {
@@ -4315,8 +4449,55 @@
         window.addEventListener('load', function() {
             document.getElementById('orderDetails').value = '';
             
-            // Add event listener for split deliveries checkbox
-            document.getElementById('splitDeliveries').addEventListener('change', handleSplitDeliveriesChange);
+            // Add event listener for split deliveries checkbox using modern styling
+            const splitCheckbox = document.getElementById('splitDeliveries');
+            const buttonCheckbox = document.querySelector('.button-checkbox');
+            
+            // Sync the visual state with actual checkbox
+            if (splitCheckbox.checked) {
+                buttonCheckbox.classList.add('active');
+            }
+            
+            // Add click handler to the button checkbox for visual feedback
+            buttonCheckbox.addEventListener('click', function(e) {
+                // Toggle the actual checkbox
+                splitCheckbox.checked = !splitCheckbox.checked;
+                
+                // Update visual state
+                if (splitCheckbox.checked) {
+                    buttonCheckbox.classList.add('active');
+                } else {
+                    buttonCheckbox.classList.remove('active');
+                }
+                
+                // Trigger the original change handler
+                handleSplitDeliveriesChange();
+            });
+            
+            // Keep the original change handler for the actual checkbox
+            splitCheckbox.addEventListener('change', handleSplitDeliveriesChange);
+            
+            // Add event listener for Local AE toggle
+            const localAECheckbox = document.getElementById('localShopAE');
+            const toggleSwitch = document.querySelector('.toggle-switch');
+            
+            // Sync the visual state
+            if (localAECheckbox.checked) {
+                toggleSwitch.classList.add('active');
+            }
+            
+            // Add click handler to the toggle switch
+            toggleSwitch.addEventListener('click', function(e) {
+                // Toggle the actual checkbox
+                localAECheckbox.checked = !localAECheckbox.checked;
+                
+                // Update visual state
+                if (localAECheckbox.checked) {
+                    toggleSwitch.classList.add('active');
+                } else {
+                    toggleSwitch.classList.remove('active');
+                }
+            });
             
             // Add event listener for delivery count input
             document.getElementById('deliveryCountInput').addEventListener('input', function(e) {
