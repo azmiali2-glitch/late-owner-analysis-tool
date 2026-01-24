@@ -2743,7 +2743,7 @@
             console.log("Maximum delay:", maxDelayType, "with", maxDelay, "seconds");
             
             // Determine final result based on highest delay
-            let newZResult = "On Time";
+            let newZResult = "Manual Validation Is Required";
             
             if (maxDelay > 0) {
                 // SIMPLE LOGIC: The highest delay type wins
@@ -2837,7 +2837,7 @@
                 };
                 
                 let maxDelay = 0;
-                let finalZResult = "On Time";
+                let finalZResult = "Manual Validation Is Required";
                 
                 for (const [type, value] of Object.entries(delayValues)) {
                     const numValue = Number(value) || 0;
