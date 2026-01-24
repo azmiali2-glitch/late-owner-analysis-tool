@@ -4064,36 +4064,71 @@ function combineDateTime(datePart, timeValue, referenceTime) {
             result.formulas.push('Q: old_cpt = ' + result.columns.Q);
             console.log('Q: old_cpt =', result.columns.Q);
             
-                        // R: cpt =IF(J2>Q2,J2,Q2)
-            console.log('=== R Calculation Debug: ===');
-            console.log('J timestamp:', result.timestamps.J ? formatTime(result.timestamps.J) : 'N/A');
-            console.log('J timestamp (raw Date object):', result.timestamps.J);
-            console.log('Q timestamp:', result.timestamps.Q ? formatTime(result.timestamps.Q) : 'N/A');
-            console.log('Q timestamp (raw Date object):', result.timestamps.Q);
-            
-            if (result.timestamps.J && result.timestamps.Q) {
-                console.log('Both J and Q available for R calculation');
-                console.log('J > Q?', result.timestamps.J > result.timestamps.Q);
-                console.log('J time in ms:', result.timestamps.J ? result.timestamps.J.getTime() : 'N/A');
-                console.log('Q time in ms:', result.timestamps.Q ? result.timestamps.Q.getTime() : 'N/A');
-                
-                result.timestamps.R = result.timestamps.J > result.timestamps.Q ? result.timestamps.J : result.timestamps.Q;
-                result.columns.R = formatTime(result.timestamps.R);
-                console.log('Using MAX(J, Q):', formatTime(result.timestamps.R));
-            } else if (result.timestamps.J) {
-                console.log('Only J available for R');
-                result.timestamps.R = result.timestamps.J;
-                result.columns.R = formatTime(result.timestamps.J);
-            } else if (result.timestamps.Q) {
-                console.log('Only Q available for R');
-                result.timestamps.R = result.timestamps.Q;
-                result.columns.R = formatTime(result.timestamps.Q);
-            }
-            
-            console.log('R final result:', result.columns.R);
-            console.log('R timestamp (raw):', result.timestamps.R);
-            console.log('=== End R Calculation Debug ===');
-            result.formulas.push('R: cpt = MAX(J, Q) = ' + result.columns.R);
+                       // R: cpt = MAX(J, Q, I)
+console.log('=== R Calculation Debug: ===');
+console.log('J timestamp:', result.timestamps.J ? formatTime(result.timestamps.J) : 'N/A');
+console.log('J timestamp (raw Date object):', result.timestamps.J);
+console.log('Q timestamp:', result.timestamps.Q ? formatTime(result.timestamps.Q) : 'N/A');
+console.log('Q timestamp (raw Date object):', result.timestamps.Q);
+console.log('I timestamp:', result.timestamps.I ? formatTime(result.timestamps.I) : 'N/A');
+console.log('I timestamp (raw Date object):', result.timestamps.I);
+
+// Create an array of available timestamps for comparison
+const availableTimestamps = [];
+
+if (result.timestamps.J) {
+    availableTimestamps.push({ type: 'J', time: result.timestamps.J });
+    console.log('J available:', formatTime(result.timestamps.J));
+}
+if (result.timestamps.Q) {
+    availableTimestamps.push({ type: 'Q', time: result.timestamps.Q });
+    console.log('Q available:', formatTime(result.timestamps.Q));
+}
+if (result.timestamps.I) {
+    availableTimestamps.push({ type: 'I', time: result.timestamps.I });
+    console.log('I available:', formatTime(result.timestamps.I));
+}
+
+if (availableTimestamps.length > 0) {
+    // Find the maximum (latest) time
+    let maxTime = availableTimestamps[0].time;
+    let maxType = availableTimestamps[0].type;
+    
+    for (let i = 1; i < availableTimestamps.length; i++) {
+        console.log(`Comparing ${maxType} (${formatTime(maxTime)}) with ${availableTimestamps[i].type} (${formatTime(availableTimestamps[i].time)})`);
+        
+        if (availableTimestamps[i].time > maxTime) {
+            maxTime = availableTimestamps[i].time;
+            maxType = availableTimestamps[i].type;
+            console.log(`New max: ${maxType} (${formatTime(maxTime)})`);
+        }
+    }
+    
+    result.timestamps.R = maxTime;
+    result.columns.R = formatTime(result.timestamps.R);
+    console.log(`Using MAX(J, Q, I): ${maxType} = ${formatTime(result.timestamps.R)}`);
+} else {
+    console.log('No timestamps available for R calculation');
+    result.columns.R = 'N/A';
+}
+
+console.log('R final result:', result.columns.R);
+console.log('R timestamp (raw):', result.timestamps.R);
+console.log('=== End R Calculation Debug ===');
+
+// Update formula to show which value was used
+if (availableTimestamps.length === 1) {
+    result.formulas.push(`R: cpt = ${availableTimestamps[0].type} = ${result.columns.R}`);
+} else if (availableTimestamps.length > 1) {
+    // Show all available and which was maximum
+    const availableTypes = availableTimestamps.map(t => t.type).join(', ');
+    const maxType = availableTimestamps.reduce((max, current) => 
+        current.time > max.time ? current : max
+    ).type;
+    result.formulas.push(`R: cpt = MAX(${availableTypes}) [${maxType} is latest] = ${result.columns.R}`);
+} else {
+    result.formulas.push('R: cpt = N/A (no timestamps available)');
+}
             
             // S: is_wfa (FROM FIRST CODE)
             result.columns.S = text.includes("Scheduled") ? "TRUE" : "FALSE";
