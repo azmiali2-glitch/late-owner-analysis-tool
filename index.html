@@ -3569,20 +3569,28 @@ console.log('E: Ordered at (FINAL, EXACT TEXT) =', result.columns.E);
             console.log('Base date:', baseDate.toLocaleDateString());
             console.log('Base time:', baseTime ? baseTime.toLocaleTimeString() : 'null');
             
-            // Helper: Combine date and time, adjust for midnight crossing (FROM FIRST CODE)
-            function combineDateTime(datePart, timeValue, referenceTime) {
-                if (!datePart || !timeValue) return null;
-                
-                const dateTime = new Date(datePart);
-                dateTime.setHours(timeValue.getHours(), timeValue.getMinutes(), timeValue.getSeconds());
-                
-                if (referenceTime && timeValue < referenceTime) {
-                    dateTime.setDate(dateTime.getDate() + 1);
-                    console.log('Adjusted date +1 day for crossing midnight');
-                }
-                
-                return dateTime;
-            }
+            // Replace the current combineDateTime function with this:
+function combineDateTime(datePart, timeValue, referenceTime) {
+    if (!datePart || !timeValue) return null;
+    
+    const dateTime = new Date(datePart);
+    dateTime.setHours(timeValue.getHours(), timeValue.getMinutes(), timeValue.getSeconds());
+    
+    // IMPORTANT FIX: Only add a day if the time difference is significant
+    // (more than 6 hours earlier), not for small differences
+    if (referenceTime) {
+        const timeDiffMinutes = (timeValue.getHours() * 60 + timeValue.getMinutes()) - 
+                               (referenceTime.getHours() * 60 + referenceTime.getMinutes());
+        
+        // Only add a day if the time is more than 6 hours earlier than ordered time
+        // This handles actual midnight crossing, not small timing differences
+        if (timeDiffMinutes < -6 * 60) { // 6 hours = 360 minutes
+            dateTime.setDate(dateTime.getDate() + 1);
+        }
+    }
+    
+    return dateTime;
+}
             
             // F: Queued At - USING DUAL PATTERN SEARCH (FROM FIRST CODE)
             const queuedTimeStr = findTimelineEvent(text, 'Queued');
@@ -4056,17 +4064,35 @@ console.log('E: Ordered at (FINAL, EXACT TEXT) =', result.columns.E);
             result.formulas.push('Q: old_cpt = ' + result.columns.Q);
             console.log('Q: old_cpt =', result.columns.Q);
             
-            // R: cpt =IF(J2>Q2,J2,Q2) (FROM FIRST CODE)
+                        // R: cpt =IF(J2>Q2,J2,Q2)
+            console.log('=== R Calculation Debug: ===');
+            console.log('J timestamp:', result.timestamps.J ? formatTime(result.timestamps.J) : 'N/A');
+            console.log('J timestamp (raw Date object):', result.timestamps.J);
+            console.log('Q timestamp:', result.timestamps.Q ? formatTime(result.timestamps.Q) : 'N/A');
+            console.log('Q timestamp (raw Date object):', result.timestamps.Q);
+            
             if (result.timestamps.J && result.timestamps.Q) {
+                console.log('Both J and Q available for R calculation');
+                console.log('J > Q?', result.timestamps.J > result.timestamps.Q);
+                console.log('J time in ms:', result.timestamps.J ? result.timestamps.J.getTime() : 'N/A');
+                console.log('Q time in ms:', result.timestamps.Q ? result.timestamps.Q.getTime() : 'N/A');
+                
                 result.timestamps.R = result.timestamps.J > result.timestamps.Q ? result.timestamps.J : result.timestamps.Q;
                 result.columns.R = formatTime(result.timestamps.R);
+                console.log('Using MAX(J, Q):', formatTime(result.timestamps.R));
             } else if (result.timestamps.J) {
+                console.log('Only J available for R');
                 result.timestamps.R = result.timestamps.J;
                 result.columns.R = formatTime(result.timestamps.J);
             } else if (result.timestamps.Q) {
+                console.log('Only Q available for R');
                 result.timestamps.R = result.timestamps.Q;
                 result.columns.R = formatTime(result.timestamps.Q);
             }
+            
+            console.log('R final result:', result.columns.R);
+            console.log('R timestamp (raw):', result.timestamps.R);
+            console.log('=== End R Calculation Debug ===');
             result.formulas.push('R: cpt = MAX(J, Q) = ' + result.columns.R);
             
             // S: is_wfa (FROM FIRST CODE)
