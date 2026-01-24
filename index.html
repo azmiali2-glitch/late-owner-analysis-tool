@@ -2135,27 +2135,35 @@
                     let longDispatchDelay = parseFloat(result.columns.U.replace('s', '') || 0);
                     let pickedUpDelay = pickedUpResult.totalSeconds || 0;
                     
-                    // If result is "Picked up by another rider", adjust long dispatch to 0
-                    // If result is "Long Dispatch", adjust picked up to 0
+                    // IMPORTANT FIX: First, check the Long Dispatch comparison
+                    // This determines if it's actually Long Dispatch or Picked up by another rider
+                    const comparisonValue = longDispatchDelay - pickedUpDelay;
+                    const isActuallyLongDispatch = comparisonValue > pickedUpDelay;
+                    
+                    // Now set delays based on the ACTUAL result, not just the original
                     if (finalZResult === "Picked up by another rider") {
-                        // Long dispatch should be set to 0 when it's picked up by another rider
+                        // If it's picked up by another rider, set long dispatch to 0
                         longDispatchDelay = 0;
                     } else if (finalZResult === "Long Dispatch") {
-                        // Picked up should be set to 0 when it's long dispatch
+                        // If it's long dispatch, set picked up to 0
                         pickedUpDelay = 0;
-                    }
+                    } else {
+                        // For other results (Vendor Late, Rider Late, etc.), set both to 0
+                        longDispatchDelay = 0;
+                        pickedUpDelay = 0;
+}
                     
                     // Store delivery result with picked up analysis data
                     splitDeliveriesData.deliveryResults.push({
-                        index: index,
-                        result: result,
-                        pickedUpResult: pickedUpResult,
-                        delays: {
-                            vendorLate: parseFloat(result.columns.V.replace('s', '') || 0),
-                            riderLate: parseFloat(result.columns.X.replace('s', '') || 0) + parseFloat(result.columns.W.replace('s', '') || 0),
-                            longDispatch: longDispatchDelay, // Use adjusted value
-                            pickedUp: pickedUpDelay // Use adjusted value
-                        },
+                    index: index,
+                    result: result,
+                    pickedUpResult: pickedUpResult,
+                    delays: {
+                        vendorLate: parseFloat(result.columns.V.replace('s', '') || 0),
+                        riderLate: parseFloat(result.columns.X.replace('s', '') || 0) + parseFloat(result.columns.W.replace('s', '') || 0),
+                        longDispatch: longDispatchDelay, // Use adjusted value
+                        pickedUp: pickedUpDelay // Use adjusted value
+                    },
                         pickedUpAnalysisData: {
                             patterns: pickedUpResult.patterns,
                             originalCalculations: {
@@ -2894,14 +2902,41 @@
             // Update the result
             result.columns.Z = finalZResult;
             
-            // Update the delivery's delays
-            deliveryResult.delays.vendorLate = vendorDelay;
-            deliveryResult.delays.pickedUp = totalPickedUp;
-            
-            // If result changed to something other than "Picked up by another rider", set pickedUp to 0
-            if (!finalZResult.includes("Picked up by another rider")) {
-                deliveryResult.delays.pickedUp = 0;
-            }
+           // Update the delivery's delays
+        // Update ALL delivery delays based on the new result
+deliveryResult.delays.vendorLate = vendorDelay;
+deliveryResult.delays.riderLate = totalRiderDelay;
+deliveryResult.delays.longDispatch = longDispatch;
+deliveryResult.delays.pickedUp = totalPickedUp;
+
+// IMPORTANT: Reset delays that don't apply to the new result
+if (finalZResult === "Picked up by another rider") {
+    // Only pickedUp should be non-zero
+    deliveryResult.delays.longDispatch = 0;
+    deliveryResult.delays.vendorLate = 0;
+    deliveryResult.delays.riderLate = 0;
+} else if (finalZResult === "Long Dispatch") {
+    // Only longDispatch should be non-zero
+    deliveryResult.delays.pickedUp = 0;
+    deliveryResult.delays.vendorLate = 0;
+    deliveryResult.delays.riderLate = 0;
+} else if (finalZResult === "Vendor Late") {
+    // Only vendorLate should be non-zero
+    deliveryResult.delays.longDispatch = 0;
+    deliveryResult.delays.pickedUp = 0;
+    deliveryResult.delays.riderLate = 0;
+} else if (finalZResult === "Rider Late") {
+    // Only riderLate should be non-zero
+    deliveryResult.delays.longDispatch = 0;
+    deliveryResult.delays.pickedUp = 0;
+    deliveryResult.delays.vendorLate = 0;
+} else {
+    // For "On Time" or "Before PDT", all delays should be 0
+    deliveryResult.delays.longDispatch = 0;
+    deliveryResult.delays.pickedUp = 0;
+    deliveryResult.delays.vendorLate = 0;
+    deliveryResult.delays.riderLate = 0;
+}
             
             // Update delivery status
             updateDeliveryStatus(deliveryIndex, finalZResult);
