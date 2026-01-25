@@ -1167,6 +1167,43 @@
             min-width: 80px;
             display: inline-block;
         }
+
+        /* Updated Delivery Indicator Layout */
+.delivery-indicator {
+    flex-direction: column;
+    gap: 8px;
+    padding: 15px 20px;
+}
+
+.delivery-number-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+    width: 100%;
+}
+
+.remaining-section {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+.remaining-label {
+    color: #411517;
+    font-weight: 600;
+    font-size: 1rem;
+    background: rgba(65, 21, 23, 0.1);
+    padding: 6px 16px;
+    border-radius: 20px;
+    border: 1px solid rgba(65, 21, 23, 0.2);
+}
+
+/* Remove old indicator separator */
+.indicator-separator {
+    display: none;
+}
         
         .delivery-indicator .indicator-separator {
             color: #999;
@@ -1583,15 +1620,15 @@
                 <h3>Additional Validation Is Required</h3>
                 <p>Review Queued stages for all deliveries with Picked up by another rider result</p>
                 
-                <!-- Delivery Indicator -->
-                <div class="delivery-indicator" id="deliveryIndicator">
-                    <span class="indicator-label">Viewing Delivery</span>
-                    <span class="indicator-value">
-                        <span id="currentDeliveryDisplay">1</span>
-                        <span class="indicator-separator">/</span>
-                        <span id="totalDeliveriesDisplay">1</span>
-                    </span>
-                </div>
+               <div class="delivery-indicator" id="deliveryIndicator">
+    <div class="delivery-number-section">
+        <span class="indicator-label">Reviewing Delivery</span>
+        <span class="indicator-value" id="currentDeliveryNumberDisplay">4</span>
+    </div>
+    <div class="remaining-section">
+        <span class="remaining-label" id="remainingDeliveriesDisplay">2 deliveries remaining</span>
+    </div>
+</div>
                 
                 <!-- Delivery Tabs for Multiple Deliveries (hidden) -->
                 <div class="delivery-tabs" id="deliveryTabs">
@@ -2314,17 +2351,53 @@ function showMultiDeliveryPickedUpPopup(deliveryIndices) {
     updateDeliveryIndicator(0, visibleDeliveries.length);
 }
         
-        // UPDATED FUNCTION: Update delivery indicator
-function updateDeliveryIndicator(currentDeliveryNumber, totalDeliveries) {
+        // UPDATED FUNCTION: Update delivery indicator with real delivery number and remaining count
+function updateDeliveryIndicator(tabIndex, totalFilteredDeliveries, deliveryIndex) {
     const deliveryIndicator = document.getElementById('deliveryIndicator');
-    const currentDisplay = document.getElementById('currentDeliveryDisplay');
-    const totalDisplay = document.getElementById('totalDeliveriesDisplay');
+    const currentNumberDisplay = document.getElementById('currentDeliveryNumberDisplay');
+    const remainingDisplay = document.getElementById('remainingDeliveriesDisplay');
     
     if (deliveryIndicator) {
         deliveryIndicator.style.display = 'flex';
-        // Show exact delivery number (not tab index)
-        currentDisplay.textContent = currentDeliveryNumber;
-        totalDisplay.textContent = totalDeliveries;
+        
+        // Debug logging to help identify issues
+        console.log('updateDeliveryIndicator called with:', {
+            tabIndex,
+            totalFilteredDeliveries,
+            deliveryIndex,
+            deliveriesArray: multiDeliveryPopupData.deliveries
+        });
+        
+        // 1️⃣ Show real delivery number (e.g., Delivery #4)
+        // Make sure deliveryIndex is a valid number
+        let realDeliveryNumber;
+        
+        if (deliveryIndex !== undefined && deliveryIndex !== null && !isNaN(deliveryIndex)) {
+            // Use the provided deliveryIndex
+            realDeliveryNumber = deliveryIndex + 1; // Convert from 0-based to 1-based
+        } else if (multiDeliveryPopupData.deliveries && multiDeliveryPopupData.deliveries[tabIndex] !== undefined) {
+            // Fallback: Get delivery index from the deliveries array
+            realDeliveryNumber = multiDeliveryPopupData.deliveries[tabIndex] + 1;
+        } else {
+            // Last resort: Use tabIndex + 1
+            realDeliveryNumber = tabIndex + 1;
+        }
+        
+        currentNumberDisplay.textContent = realDeliveryNumber;
+        
+        // 2️⃣ Calculate and show remaining deliveries
+        // Make sure we have valid numbers
+        const currentTab = tabIndex !== undefined && !isNaN(tabIndex) ? tabIndex : 0;
+        const totalDeliveries = totalFilteredDeliveries !== undefined && !isNaN(totalFilteredDeliveries) ? totalFilteredDeliveries : 1;
+        const remainingCount = totalDeliveries - currentTab - 1;
+        
+        if (remainingCount <= 0) {
+            remainingDisplay.textContent = '0 deliveries remaining';
+        } else if (remainingCount === 1) {
+            remainingDisplay.textContent = '1 delivery remaining';
+        } else {
+            remainingDisplay.textContent = `${remainingCount} deliveries remaining`;
+        }
     }
 }
         
@@ -2366,8 +2439,12 @@ function switchDeliveryTab(tabIndex, deliveryIndex) {
     // Update popup summary
     updatePopupSummary();
     
-    // Update delivery indicator with EXACT delivery number
-    updateDeliveryIndicator(deliveryIndex + 1, multiDeliveryPopupData.deliveries.length);
+    // Update delivery indicator with real delivery number and remaining count
+updateDeliveryIndicator(
+    tabIndex,                           // Current tab position (0-based)
+    multiDeliveryPopupData.deliveries.length, // Total filtered deliveries
+    deliveryIndex                        // Real delivery index from original data
+);
 }
         
         // UPDATED FUNCTION: Update queued stages list
@@ -2661,12 +2738,13 @@ function showPickedUpPopup() {
     document.getElementById('deliveryInfoHeader').style.display = 'none';
     
     // Show delivery indicator for single delivery
-    const deliveryIndicator = document.getElementById('deliveryIndicator');
-    if (deliveryIndicator) {
-        deliveryIndicator.style.display = 'flex';
-        document.getElementById('currentDeliveryDisplay').textContent = '1';
-        document.getElementById('totalDeliveriesDisplay').textContent = '1';
-    }
+const deliveryIndicator = document.getElementById('deliveryIndicator');
+if (deliveryIndicator) {
+    deliveryIndicator.style.display = 'flex';
+    // For single delivery, it's always delivery #1 and 0 remaining
+    document.getElementById('currentDeliveryNumberDisplay').textContent = '1';
+    document.getElementById('remainingDeliveriesDisplay').textContent = '0 deliveries remaining';
+}
     
     // Update the queued stages list
     updateQueuedStagesList();
