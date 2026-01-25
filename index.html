@@ -1750,6 +1750,16 @@
             
             console.log("Tool reset complete - fresh state restored");
         }
+
+        // NEW FUNCTION: Check if delivery should be hidden
+function shouldHideDelivery(patterns) {
+    // Check if all patterns lack Near Pickup stage
+    const patternsWithNearPickup = patterns.filter(pattern => 
+        pattern.hasNearPickupBetween === true
+    );
+    
+    return patterns.length > 0 && patternsWithNearPickup.length === 0;
+}
         
         // ===========================================
         // ENHANCEMENT 2️⃣: BACK BUTTON FUNCTION
@@ -2092,12 +2102,17 @@
                 result.columns.Z = finalZResult;
             }
             
-            // Check if result is "Picked up by another rider" and show popup automatically if enabled
-            if (autoShowPopup && (finalZResult === "Picked up by another rider" || finalZResult.includes("Picked up by another rider"))) {
-                setTimeout(() => {
-                    showPickedUpPopup();
-                }, 300);
-            }
+           // Check if result is "Picked up by another rider" and show popup automatically if enabled
+if (autoShowPopup && (finalZResult === "Picked up by another rider" || finalZResult.includes("Picked up by another rider"))) {
+    // Check if delivery should be shown (has patterns with Near Pickup)
+    if (!shouldHideDelivery(pickedUpAnalysisData.patterns)) {
+        setTimeout(() => {
+            showPickedUpPopup();
+        }, 300);
+    } else {
+        console.log("Delivery hidden - skipping popup (no patterns with Near Pickup)");
+    }
+}
         }
         
         // Function to process split deliveries
@@ -2229,21 +2244,40 @@
             }
         }
         
-       // NEW FUNCTION: Show popup for multiple deliveries with Picked up by another rider
+       // UPDATED FUNCTION: Show popup for multiple deliveries with Picked up by another rider
 function showMultiDeliveryPickedUpPopup(deliveryIndices) {
+    // Filter out deliveries that should be hidden (no patterns with Near Pickup)
+    const visibleDeliveries = [];
+    
+    deliveryIndices.forEach(deliveryIndex => {
+        const deliveryResult = splitDeliveriesData.deliveryResults[deliveryIndex];
+        const patterns = deliveryResult.pickedUpAnalysisData.patterns;
+        
+        // Check if this delivery should be hidden
+        if (!shouldHideDelivery(patterns)) {
+            visibleDeliveries.push(deliveryIndex);
+        }
+    });
+    
+    // If all deliveries are hidden, show a message and return
+    if (visibleDeliveries.length === 0) {
+        alert("All deliveries with 'Picked up by another rider' result have been hidden because they don't have Near Pickup stages between Accepted and Queued. The analysis will proceed with original calculations.");
+        return;
+    }
+    
     // Store the delivery indices for the popup
-    multiDeliveryPopupData.deliveries = deliveryIndices;
+    multiDeliveryPopupData.deliveries = visibleDeliveries;
     multiDeliveryPopupData.currentTabIndex = 0;
     
-    // Generate tabs for each delivery
+    // Generate tabs for each visible delivery
     const deliveryTabs = document.getElementById('deliveryTabs');
     deliveryTabs.innerHTML = '';
     
-    deliveryIndices.forEach((deliveryIndex, tabIndex) => {
+    visibleDeliveries.forEach((deliveryIndex, tabIndex) => {
         const deliveryResult = splitDeliveriesData.deliveryResults[deliveryIndex];
         
         // Count patterns with Near Pickup between Accepted and Queued
-        const patternsWithNearPickup = deliveryResult.pickedUpResult.patterns.filter(
+        const patternsWithNearPickup = deliveryResult.pickedUpAnalysisData.patterns.filter(
             pattern => pattern.hasNearPickupBetween === true
         ).length;
         
@@ -2259,8 +2293,8 @@ function showMultiDeliveryPickedUpPopup(deliveryIndices) {
         deliveryTabs.appendChild(tab);
     });
     
-    // Load the first delivery's data
-    switchDeliveryTab(0, deliveryIndices[0]);
+    // Load the first visible delivery's data
+    switchDeliveryTab(0, visibleDeliveries[0]);
     
     // Show the popup
     const popup = document.getElementById('pickedUpPopup');
@@ -2270,64 +2304,71 @@ function showMultiDeliveryPickedUpPopup(deliveryIndices) {
     // Show the delivery info header
     document.getElementById('deliveryInfoHeader').style.display = 'block';
     
-    // Update delivery indicator
-    updateDeliveryIndicator(0, deliveryIndices.length);
+    // Show the delivery indicator
+    const deliveryIndicator = document.getElementById('deliveryIndicator');
+    if (deliveryIndicator) {
+        deliveryIndicator.style.display = 'flex';
+    }
+    
+    // Update delivery indicator with visible delivery number
+    updateDeliveryIndicator(0, visibleDeliveries.length);
 }
         
-        // NEW FUNCTION: Update delivery indicator
-        function updateDeliveryIndicator(currentIndex, totalDeliveries) {
-            const deliveryIndicator = document.getElementById('deliveryIndicator');
-            const currentDisplay = document.getElementById('currentDeliveryDisplay');
-            const totalDisplay = document.getElementById('totalDeliveriesDisplay');
-            
-            if (deliveryIndicator) {
-                deliveryIndicator.style.display = 'flex';
-                currentDisplay.textContent = currentIndex + 1;
-                totalDisplay.textContent = totalDeliveries;
-            }
-        }
+        // UPDATED FUNCTION: Update delivery indicator
+function updateDeliveryIndicator(currentDeliveryNumber, totalDeliveries) {
+    const deliveryIndicator = document.getElementById('deliveryIndicator');
+    const currentDisplay = document.getElementById('currentDeliveryDisplay');
+    const totalDisplay = document.getElementById('totalDeliveriesDisplay');
+    
+    if (deliveryIndicator) {
+        deliveryIndicator.style.display = 'flex';
+        // Show exact delivery number (not tab index)
+        currentDisplay.textContent = currentDeliveryNumber;
+        totalDisplay.textContent = totalDeliveries;
+    }
+}
         
-        // NEW FUNCTION: Switch between delivery tabs
-        function switchDeliveryTab(tabIndex, deliveryIndex) {
-            // Update active tab
-            const tabs = document.querySelectorAll('.delivery-tab');
-            tabs.forEach(tab => {
-                tab.classList.remove('active');
-                if (parseInt(tab.dataset.tabIndex) === tabIndex) {
-                    tab.classList.add('active');
-                }
-            });
-            
-            // Update current tab index
-            multiDeliveryPopupData.currentTabIndex = tabIndex;
-            
-            // Load the delivery data
-            const deliveryResult = splitDeliveriesData.deliveryResults[deliveryIndex];
-            currentEditingDeliveryIndex = deliveryIndex;
-            
-            // Load the delivery's picked up analysis data
-            pickedUpAnalysisData = {
-                patterns: deliveryResult.pickedUpAnalysisData.patterns,
-                originalCalculations: { ...deliveryResult.pickedUpAnalysisData.originalCalculations },
-                adjustedCalculations: { ...deliveryResult.pickedUpAnalysisData.adjustedCalculations },
-                checkedPatterns: new Set([...deliveryResult.pickedUpAnalysisData.checkedPatterns])
-            };
-            
-            // Update delivery info header
-            document.getElementById('currentDeliveryNumber').textContent = `#${deliveryIndex + 1}`;
-            document.getElementById('currentDeliveryOrderId').textContent = deliveryResult.result.columns.B || 'N/A';
-            document.getElementById('currentDeliveryStatus').textContent = deliveryResult.result.columns.Z;
-            document.getElementById('currentDeliveryQueuedCount').textContent = deliveryResult.pickedUpResult.patterns.length;
-            
-            // Update the queued stages list
-            updateQueuedStagesList();
-            
-            // Update popup summary
-            updatePopupSummary();
-            
-            // Update delivery indicator
-            updateDeliveryIndicator(tabIndex, multiDeliveryPopupData.deliveries.length);
+        // UPDATED FUNCTION: Switch between delivery tabs
+function switchDeliveryTab(tabIndex, deliveryIndex) {
+    // Update active tab
+    const tabs = document.querySelectorAll('.delivery-tab');
+    tabs.forEach(tab => {
+        tab.classList.remove('active');
+        if (parseInt(tab.dataset.tabIndex) === tabIndex) {
+            tab.classList.add('active');
         }
+    });
+    
+    // Update current tab index
+    multiDeliveryPopupData.currentTabIndex = tabIndex;
+    
+    // Load the delivery data
+    const deliveryResult = splitDeliveriesData.deliveryResults[deliveryIndex];
+    currentEditingDeliveryIndex = deliveryIndex;
+    
+    // Load the delivery's picked up analysis data
+    pickedUpAnalysisData = {
+        patterns: deliveryResult.pickedUpAnalysisData.patterns,
+        originalCalculations: { ...deliveryResult.pickedUpAnalysisData.originalCalculations },
+        adjustedCalculations: { ...deliveryResult.pickedUpAnalysisData.adjustedCalculations },
+        checkedPatterns: new Set([...deliveryResult.pickedUpAnalysisData.checkedPatterns])
+    };
+    
+    // Update delivery info header
+    document.getElementById('currentDeliveryNumber').textContent = `#${deliveryIndex + 1}`;
+    document.getElementById('currentDeliveryOrderId').textContent = deliveryResult.result.columns.B || 'N/A';
+    document.getElementById('currentDeliveryStatus').textContent = deliveryResult.result.columns.Z;
+    document.getElementById('currentDeliveryQueuedCount').textContent = deliveryResult.pickedUpResult.patterns.length;
+    
+    // Update the queued stages list
+    updateQueuedStagesList();
+    
+    // Update popup summary
+    updatePopupSummary();
+    
+    // Update delivery indicator with EXACT delivery number
+    updateDeliveryIndicator(deliveryIndex + 1, multiDeliveryPopupData.deliveries.length);
+}
         
         // UPDATED FUNCTION: Update queued stages list
 function updateQueuedStagesList() {
@@ -2345,12 +2386,12 @@ function updateQueuedStagesList() {
     console.log(`Filtered patterns (with Near Pickup): ${filteredPatterns.length}`);
     
     if (filteredPatterns.length === 0) {
+        // Don't show the message anymore - just show empty state
         queuedStageList.innerHTML = `
             <div class="no-queued-stages">
-                <p>No Queued stages found in Accepted → Queued patterns with Near Pickup stage between them.</p>
-                <p>The order analysis will proceed with the original calculations.</p>
+                <p>No Queued stages with Near Pickup stage between them to display.</p>
                 <p class="info-note" style="margin-top: 10px; color: #666; font-size: 0.9rem;">
-                    Note: Patterns without Near Pickup stage between Accepted and Queued are hidden but still calculated.
+                    Patterns without Near Pickup stage between Accepted and Queued are hidden but still calculated in the background.
                 </p>
             </div>
         `;
@@ -2605,28 +2646,40 @@ function updateQueuedStagesList() {
         }
         
         // UPDATED FUNCTION: Show picked up popup (for single delivery)
-        function showPickedUpPopup() {
-            const popup = document.getElementById('pickedUpPopup');
-            
-            // Hide tabs and delivery info header for single delivery
-            document.getElementById('deliveryTabs').style.display = 'none';
-            document.getElementById('deliveryInfoHeader').style.display = 'none';
-            
-            // Hide delivery indicator for single delivery
-            document.getElementById('deliveryIndicator').style.display = 'none';
-            
-            // Update the queued stages list
-            updateQueuedStagesList();
-            
-            // Update summary with current values
-            updatePopupSummary();
-            
-            // Show popup
-            popup.style.display = 'flex';
-            
-            // Prevent body scroll
-            document.body.style.overflow = 'hidden';
-        }
+function showPickedUpPopup() {
+    const popup = document.getElementById('pickedUpPopup');
+    
+    // Check if this delivery should be hidden
+    if (shouldHideDelivery(pickedUpAnalysisData.patterns)) {
+        // Don't show popup for hidden deliveries
+        console.log("Delivery hidden - no patterns with Near Pickup between Accepted and Queued");
+        return;
+    }
+    
+    // Hide tabs and delivery info header for single delivery
+    document.getElementById('deliveryTabs').style.display = 'none';
+    document.getElementById('deliveryInfoHeader').style.display = 'none';
+    
+    // Show delivery indicator for single delivery
+    const deliveryIndicator = document.getElementById('deliveryIndicator');
+    if (deliveryIndicator) {
+        deliveryIndicator.style.display = 'flex';
+        document.getElementById('currentDeliveryDisplay').textContent = '1';
+        document.getElementById('totalDeliveriesDisplay').textContent = '1';
+    }
+    
+    // Update the queued stages list
+    updateQueuedStagesList();
+    
+    // Update summary with current values
+    updatePopupSummary();
+    
+    // Show popup
+    popup.style.display = 'flex';
+    
+    // Prevent body scroll
+    document.body.style.overflow = 'hidden';
+}
         
         // Function: Close popup
         function closePopup() {
