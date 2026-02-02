@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Order Analysis Tool - Late Owner Analysis</title>
     <style>
-        /* Modern CSS Reset */
+   
         * {
             margin: 0;
             padding: 0;
@@ -194,12 +194,9 @@
             height: 200px;
             border-radius: 0;
         }
+
         
-        /* =========================================== */
-        /* MODERN CHECKBOX STYLING - ENHANCEMENT 3️⃣ */
-        /* =========================================== */
-        
-        /* Modern Toggle Switch for Local AE */
+        /*Toggle Switch for Local AE */
         .toggle-switch {
             display: flex;
             align-items: center;
@@ -261,7 +258,7 @@
             flex: 1;
         }
         
-        /* Modern Button-Style Checkbox for Split Deliveries */
+        /*Button-Style Checkbox for Split Deliveries */
         .button-checkbox {
             display: flex;
             align-items: center;
@@ -621,11 +618,6 @@
             display: none !important;
         }
         
-        /* =========================================== */
-        /* ULTRA-FAST POPUPS - ENHANCEMENT 4️⃣ */
-        /* Remove all delays, timeouts, animations */
-        /* =========================================== */
-        
         .popup-overlay {
             position: fixed;
             top: 0;
@@ -662,7 +654,7 @@
             flex-direction: column;
         }
         
-        /* Remove animation keyframes since they're no longer used */
+        /* Remove animation keyframes */
         
         .popup-header {
             background: linear-gradient(135deg, #805ad5 0%, #9f7aea 100%);
@@ -1093,11 +1085,8 @@
             display: none !important;
         }
         
-        /* =========================================== */
-        /* NEW STYLES FOR REQUESTED ENHANCEMENTS */
-        /* =========================================== */
         
-        /* 1️⃣ Back Button for Split Deliveries - ENHANCEMENT 2️⃣ */
+        /*  Back Button for Split Deliveries */
         .split-back-button-container {
             grid-column: 1 / -1;
             margin-bottom: 10px;
@@ -1503,14 +1492,14 @@
                     <!-- Dynamic text areas will be generated here -->
                 </div>
                 
-                <!-- Modern Toggle Switch for Local AE - ENHANCEMENT 3️⃣ -->
+                <!--Toggle Switch for Local AE - ENHANCEMENT 3️⃣ -->
                 <label class="toggle-switch" for="localShopAE">
                     <input type="checkbox" class="toggle-switch-input" id="localShopAE">
                     <div class="toggle-switch-slider"></div>
                     <span class="toggle-switch-label">Local Shop AE</span>
                 </label>
                 
-                <!-- Modern Button-Style Checkbox for Split Deliveries - ENHANCEMENT 3️⃣ -->
+                <!--Button-Style Checkbox for Split Deliveries - ENHANCEMENT 3️⃣ -->
                 <label class="button-checkbox" for="splitDeliveries">
                     <input type="checkbox" class="button-checkbox-input" id="splitDeliveries">
                     <div class="button-checkbox-content">
@@ -1577,7 +1566,7 @@
         </div>
     </div>
 
-    <!-- Modern Popup for Split Deliveries Number Selection -->
+    <!-- Popup for Split Deliveries Number Selection -->
     <div class="popup-overlay" id="splitDeliveriesPopup" style="display: none;">
         <div class="popup-container">
             <div class="popup-header">
@@ -1611,7 +1600,7 @@
         </div>
     </div>
 
-    <!-- Modern Popup for Picked up by another rider analysis -->
+    <!--Popup for Picked up by another rider analysis -->
     <div class="popup-overlay" id="pickedUpPopup" style="display: none;">
         <div class="popup-container">
             <div class="popup-header">
@@ -1716,10 +1705,7 @@
             deliveries: [], // Array of delivery indices with "Picked up by another rider"
             currentTabIndex: 0
         };
-        
-        // ===========================================
-        // ENHANCEMENT 1️⃣: RESET TOOL FUNCTION
-        // ===========================================
+  
         function resetTool() {
             console.log("Resetting tool to initial state...");
             
@@ -1788,7 +1774,7 @@
             console.log("Tool reset complete - fresh state restored");
         }
 
-        // NEW FUNCTION: Check if delivery should be hidden
+        // Check if delivery should be hidden
 function shouldHideDelivery(patterns) {
     // Check if all patterns lack Near Pickup stage
     const patternsWithNearPickup = patterns.filter(pattern => 
@@ -1798,9 +1784,6 @@ function shouldHideDelivery(patterns) {
     return patterns.length > 0 && patternsWithNearPickup.length === 0;
 }
         
-        // ===========================================
-        // ENHANCEMENT 2️⃣: BACK BUTTON FUNCTION
-        // ===========================================
         function goBackToSingleDelivery() {
             console.log("Going back to single delivery mode...");
             
@@ -2187,7 +2170,7 @@ if (autoShowPopup && (finalZResult === "Picked up by another rider" || finalZRes
                     let longDispatchDelay = parseFloat(result.columns.U.replace('s', '') || 0);
                     let pickedUpDelay = pickedUpResult.totalSeconds || 0;
                     
-                    // IMPORTANT FIX: First, check the Long Dispatch comparison
+                    // check the Long Dispatch comparison
                     // This determines if it's actually Long Dispatch or Picked up by another rider
                     const comparisonValue = longDispatchDelay - pickedUpDelay;
                     const isActuallyLongDispatch = comparisonValue > pickedUpDelay;
@@ -2259,7 +2242,7 @@ if (autoShowPopup && (finalZResult === "Picked up by another rider" || finalZRes
             updateSplitDeliveriesSummary();
             updateFinalResult(splitDeliveriesData.finalResult);
             
-            // Check if we should show popup automatically - UPDATED FOR MULTI-DELIVERY
+            // Check if we should show popup automatically - FOR MULTI-DELIVERY
             if (autoShowPopup) {
                 // Find ALL deliveries with "Picked up by another rider" result
                 const pickedUpDeliveries = [];
@@ -2281,7 +2264,7 @@ if (autoShowPopup && (finalZResult === "Picked up by another rider" || finalZRes
             }
         }
         
-       // UPDATED FUNCTION: Show popup for multiple deliveries with Picked up by another rider
+       // Show popup for multiple deliveries with Picked up by another rider
 function showMultiDeliveryPickedUpPopup(deliveryIndices) {
     // Filter out deliveries that should be hidden (no patterns with Near Pickup)
     const visibleDeliveries = [];
@@ -2368,7 +2351,7 @@ function updateDeliveryIndicator(tabIndex, totalFilteredDeliveries, deliveryInde
             deliveriesArray: multiDeliveryPopupData.deliveries
         });
         
-        // 1️⃣ Show real delivery number (e.g., Delivery #4)
+        // Show real delivery number (e.g., Delivery #4)
         // Make sure deliveryIndex is a valid number
         let realDeliveryNumber;
         
@@ -2385,7 +2368,7 @@ function updateDeliveryIndicator(tabIndex, totalFilteredDeliveries, deliveryInde
         
         currentNumberDisplay.textContent = realDeliveryNumber;
         
-        // 2️⃣ Calculate and show remaining deliveries
+        // Calculate and show remaining deliveries
         // Make sure we have valid numbers
         const currentTab = tabIndex !== undefined && !isNaN(tabIndex) ? tabIndex : 0;
         const totalDeliveries = totalFilteredDeliveries !== undefined && !isNaN(totalFilteredDeliveries) ? totalFilteredDeliveries : 1;
@@ -2401,7 +2384,7 @@ function updateDeliveryIndicator(tabIndex, totalFilteredDeliveries, deliveryInde
     }
 }
         
-        // UPDATED FUNCTION: Switch between delivery tabs
+        // Switch between delivery tabs
 function switchDeliveryTab(tabIndex, deliveryIndex) {
     // Update active tab
     const tabs = document.querySelectorAll('.delivery-tab');
@@ -2447,7 +2430,7 @@ updateDeliveryIndicator(
 );
 }
         
-        // UPDATED FUNCTION: Update queued stages list
+        // Update queued stages list
 function updateQueuedStagesList() {
     const queuedStageList = document.getElementById('queuedStageList');
     
@@ -2853,7 +2836,7 @@ if (deliveryIndicator) {
                 formatValue(pickedUpAnalysisData.adjustedCalculations.totalRiderDelay);
         }
         
-        // Function: Live update result display
+        // Live update result display
         function liveUpdateResultDisplay() {
             // Update the main result display with adjusted values
             const finalResultDiv = document.getElementById('finalResult');
@@ -2912,7 +2895,7 @@ if (deliveryIndicator) {
             updateFinalResult(newZResult);
         }
         
-        // UPDATED FUNCTION: Apply changes for popup (handles both single and multi-delivery)
+        // Apply changes for popup (handles both single and multi-delivery)
         function applyPopupChanges() {
             if (multiDeliveryPopupData.deliveries.length > 0) {
                 // Apply changes for current tab in multi-delivery popup
@@ -3001,7 +2984,7 @@ if (deliveryIndicator) {
                     }
                 }
                 
-                // SIMPLE RULE: Highest delay type wins (no special cases)
+                // Highest delay type wins (no special cases)
                 debugData.columns.Z = finalZResult;
                 
                 // Update display
@@ -3009,7 +2992,7 @@ if (deliveryIndicator) {
             }
         }
         
-        // Function: Apply changes for split delivery
+        // Apply changes for split delivery
         function applyPopupChangesForSplitDelivery(deliveryIndex) {
             const deliveryResult = splitDeliveriesData.deliveryResults[deliveryIndex];
             
@@ -3063,7 +3046,7 @@ deliveryResult.delays.riderLate = totalRiderDelay;
 deliveryResult.delays.longDispatch = longDispatch;
 deliveryResult.delays.pickedUp = totalPickedUp;
 
-// IMPORTANT: Reset delays that don't apply to the new result
+// Reset delays that don't apply to the new result
 if (finalZResult === "Picked up by another rider") {
     // Only pickedUp should be non-zero
     deliveryResult.delays.longDispatch = 0;
@@ -3105,7 +3088,7 @@ if (finalZResult === "Picked up by another rider") {
             updateFinalResult(splitDeliveriesData.finalResult);
         }
         
-        // Function: Restore original calculations
+        // Restore original calculations
         function restoreOriginalCalculations() {
             // Reset checked patterns
             pickedUpAnalysisData.checkedPatterns.forEach(patternIndex => {
@@ -3235,10 +3218,7 @@ if (finalZResult === "Picked up by another rider") {
                         }
                         
                         const timeDiffSeconds = minutesToSeconds(timeDiffMinutes);
-                        
-                        // ===========================================
-                        // NEW LOGIC: Check for Near Pickup stage between Accepted and Queued
-                        // ===========================================
+
                         let hasNearPickupBetween = false;
                         
                         // Check all events between the current Accepted event and the found Queued event
@@ -3289,7 +3269,7 @@ if (finalZResult === "Picked up by another rider") {
     console.log("Picked up by another rider calculation complete:", result);
     return result;
 }
-        // Function: Check Long Dispatch comparison (kept for calculations)
+        // Check Long Dispatch comparison (kept for calculations)
         function checkLongDispatchComparison(orderResult, pickedUpResult) {
             console.log("=== Checking Long Dispatch Comparison ===");
             
@@ -3331,7 +3311,7 @@ if (finalZResult === "Picked up by another rider") {
             }
         }
         
-        // Function: Update final result display with new result
+        // Update final result display with new result
         function updateFinalResult(finalResult) {
             const finalResultDiv = document.getElementById('finalResult');
             finalResultDiv.textContent = finalResult;
@@ -3356,7 +3336,7 @@ if (finalZResult === "Picked up by another rider") {
             }
         }
         
-        // NEW HELPER: Find timeline event with dual pattern search (FROM FIRST CODE)
+        // Find timeline event with dual pattern search (FROM FIRST CODE)
         function findTimelineEvent(text, eventName) {
             console.log(`=== Searching for ${eventName} ===`);
             
@@ -3475,7 +3455,7 @@ if (finalZResult === "Picked up by another rider") {
             
             console.log('Processing text...');
             
-            // Helper: Parse time string to Date object - FIXED VERSION (FROM FIRST CODE)
+            // Parse time string to Date object - FIXED VERSION (FROM FIRST CODE)
             function parseTime(timeStr) {
                 if (!timeStr) return null;
                 
@@ -3526,7 +3506,7 @@ if (finalZResult === "Picked up by another rider") {
                 return date;
             }
             
-            // Helper: Parse date string (FROM FIRST CODE)
+            // Parse date string (FROM FIRST CODE)
             function parseDate(dateStr) {
                 if (!dateStr) return null;
                 
@@ -3571,7 +3551,7 @@ if (finalZResult === "Picked up by another rider") {
                 return dateObj;
             }
             
-            // Helper: Format time as HH:MM:SS AM/PM - FIXED VERSION (FROM FIRST CODE)
+            // Format time as HH:MM:SS AM/PM - FIXED VERSION (FROM FIRST CODE)
             function formatTime(date) {
                 if (!date) return '';
                 
@@ -3595,13 +3575,13 @@ if (finalZResult === "Picked up by another rider") {
                 return `${hoursStr}:${minutesStr}:${secondsStr} ${ampm}`;
             }
             
-            // Helper: Format date as MM/DD/YYYY (FROM FIRST CODE)
+            // Format date as MM/DD/YYYY (FROM FIRST CODE)
             function formatDate(date) {
                 if (!date) return '';
                 return (date.getMonth() + 1) + '/' + date.getDate() + '/' + date.getFullYear();
             }
             
-            // Helper: Format datetime (FROM FIRST CODE)
+            // Format datetime (FROM FIRST CODE)
             function formatDateTime(date) {
                 if (!date) return '';
                 return formatDate(date) + ' ' + formatTime(date);
